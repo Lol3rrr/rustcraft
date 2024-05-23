@@ -1,0 +1,6 @@
+[workspace]
+members = [ "nbt","protocol", "server"]
+resolver = "2"
+
+[workspace.dependencies]
+bytes = { version = "1.6" }
