@@ -11,6 +11,7 @@ pub use position::Position;
 pub enum ParseError {
     NegativeLength,
     ParseString,
+    RemainingDataAfterParsing { packet_id: VarInt },
     Other,
 }
 

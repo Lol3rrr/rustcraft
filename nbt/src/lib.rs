@@ -99,7 +99,10 @@ impl NbtTag for String {
     }
 }
 
-impl<T> NbtTag for Vec<T> where T: NbtTag {
+impl<T> NbtTag for Vec<T>
+where
+    T: NbtTag,
+{
     const ID: u8 = 0x09;
     const WITHNAME: bool = true;
 
@@ -125,7 +128,8 @@ impl NbtTag for HashMap<String, Tag> {
     const WITHNAME: bool = true;
 
     fn parse_value(i: &[u8]) -> nom::IResult<&[u8], Self, ()> {
-        let (i, (inner, _)) = nom::multi::many_till(Tag::parse(false, false), nom::bytes::complete::tag([0x00]))(i)?;
+        let (i, (inner, _)) =
+            nom::multi::many_till(Tag::parse(false, false), nom::bytes::complete::tag([0x00]))(i)?;
         let (i, _) = nom::bytes::streaming::tag([0x00])(i)?;
 
         Ok((i, inner.into_iter().collect()))
@@ -133,7 +137,7 @@ impl NbtTag for HashMap<String, Tag> {
 }
 
 pub struct IntArray(pub Vec<i32>);
-impl NbtTag for IntArray{
+impl NbtTag for IntArray {
     const ID: u8 = 0x0b;
     const WITHNAME: bool = true;
 
@@ -188,76 +192,116 @@ pub enum Tag {
 }
 
 impl Tag {
-    pub fn parse(from_file: bool, network: bool) -> impl FnMut(&[u8]) -> nom::IResult<&[u8], (String, Self), ()> {
+    pub fn parse(
+        from_file: bool,
+        network: bool,
+    ) -> impl FnMut(&[u8]) -> nom::IResult<&[u8], (String, Self), ()> {
         move |i| {
             nom::branch::alt((
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x00]),
-                )), |_| (String::new(), Self::End)),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x01]),
-                    Self::parse_name,
-                    nom::number::streaming::i8,
-                )), |(_, name, v)| (name, Self::Byte(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x02]),
-                    Self::parse_name,
-                    nom::number::streaming::be_i16,
-                )), |(_, name, v)| (name, Self::Short(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x03]),
-                    Self::parse_name,
-                    nom::number::streaming::be_i32,
-                )), |(_, name, v)| (name, Self::Int(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x04]),
-                    Self::parse_name,
-                    nom::number::streaming::be_i64,
-                )), |(_, name, v)| (name, Self::Long(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x05]),
-                    Self::parse_name,
-                    nom::number::streaming::be_f32,
-                )), |(_, name, v)| (name, Self::Float(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x06]),
-                    Self::parse_name,
-                    nom::number::streaming::be_f64,
-                )), |(_, name, v)| (name, Self::Double(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x07]),
-                    Self::parse_name,
-                    Self::parse_byte_array,
-                )), |(_, name, v)| (name, Self::ByteArray(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x08]),
-                    Self::parse_name,
-                    Self::parse_string,
-                )), |(_, name, string)| (name, Self::String_(string))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x09]),
-                    Self::parse_name,
-                    Self::parse_list,
-                )), |(_, name, v)| (name, Self::List(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x0a]),
-                    Self::parse_name,
-                    Self::parse_compound_inner,
-                )), |(_, name, parts)| (name, Self::Compound(parts))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x0b]),
-                    Self::parse_name,
-                    Self::parse_int_array,
-                )), |(_, name, v)| (name, Self::IntArray(v))),
-                nom::combinator::map(nom::sequence::tuple((
-                    nom::bytes::streaming::tag([0x0c]),
-                    Self::parse_name,
-                    Self::parse_long_array,
-                )), |(_, name, v)| (name, Self::LongArray(v))),
+                nom::combinator::map(
+                    nom::sequence::tuple((nom::bytes::streaming::tag([0x00]),)),
+                    |_| (String::new(), Self::End),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x01]),
+                        Self::parse_name,
+                        nom::number::streaming::i8,
+                    )),
+                    |(_, name, v)| (name, Self::Byte(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x02]),
+                        Self::parse_name,
+                        nom::number::streaming::be_i16,
+                    )),
+                    |(_, name, v)| (name, Self::Short(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x03]),
+                        Self::parse_name,
+                        nom::number::streaming::be_i32,
+                    )),
+                    |(_, name, v)| (name, Self::Int(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x04]),
+                        Self::parse_name,
+                        nom::number::streaming::be_i64,
+                    )),
+                    |(_, name, v)| (name, Self::Long(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x05]),
+                        Self::parse_name,
+                        nom::number::streaming::be_f32,
+                    )),
+                    |(_, name, v)| (name, Self::Float(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x06]),
+                        Self::parse_name,
+                        nom::number::streaming::be_f64,
+                    )),
+                    |(_, name, v)| (name, Self::Double(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x07]),
+                        Self::parse_name,
+                        Self::parse_byte_array,
+                    )),
+                    |(_, name, v)| (name, Self::ByteArray(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x08]),
+                        Self::parse_name,
+                        Self::parse_string,
+                    )),
+                    |(_, name, string)| (name, Self::String_(string)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x09]),
+                        Self::parse_name,
+                        Self::parse_list,
+                    )),
+                    |(_, name, v)| (name, Self::List(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x0a]),
+                        Self::parse_name,
+                        Self::parse_compound_inner,
+                    )),
+                    |(_, name, parts)| (name, Self::Compound(parts)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x0b]),
+                        Self::parse_name,
+                        Self::parse_int_array,
+                    )),
+                    |(_, name, v)| (name, Self::IntArray(v)),
+                ),
+                nom::combinator::map(
+                    nom::sequence::tuple((
+                        nom::bytes::streaming::tag([0x0c]),
+                        Self::parse_name,
+                        Self::parse_long_array,
+                    )),
+                    |(_, name, v)| (name, Self::LongArray(v)),
+                ),
             ))(i)
         }
     }
-    
+
     fn parse_name(i: &[u8]) -> nom::IResult<&[u8], String, ()> {
         let (i, length) = nom::number::streaming::be_u16(i)?;
         dbg!(i, length);
@@ -306,7 +350,8 @@ impl Tag {
     }
 
     fn parse_compound_inner(i: &[u8]) -> nom::IResult<&[u8], HashMap<String, Tag>, ()> {
-        let (i, (inner, _)) = nom::multi::many_till(Self::parse(false, false), nom::bytes::complete::tag([0x00]))(i)?;
+        let (i, (inner, _)) =
+            nom::multi::many_till(Self::parse(false, false), nom::bytes::complete::tag([0x00]))(i)?;
 
         dbg!(&inner);
 
@@ -352,8 +397,16 @@ mod tests {
 
         let (rem, result) = Tag::parse(false, false)(content).unwrap();
         assert_eq!(&[] as &[u8], rem);
-        assert_eq!(("hello world".into(), Tag::Compound([
-            ("name".into(), Tag::String_("Bananrama".into()))
-        ].into_iter().collect())), result);
+        assert_eq!(
+            (
+                "hello world".into(),
+                Tag::Compound(
+                    [("name".into(), Tag::String_("Bananrama".into()))]
+                        .into_iter()
+                        .collect()
+                )
+            ),
+            result
+        );
     }
 }

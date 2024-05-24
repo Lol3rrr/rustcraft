@@ -1,4 +1,7 @@
-use crate::general::VarInt;
+use crate::{
+    general::VarInt,
+    serialize::{SerializeError, SerializeItem},
+};
 
 #[derive(Debug, PartialEq)]
 pub struct Packet<D> {
@@ -20,7 +23,7 @@ pub trait PacketContentSerializer {
     const ID: i32;
 
     fn length(&self) -> usize;
-    fn serialize(&self, buffer: &mut [u8]) -> usize;
+    fn serialize<'b>(&self, buffer: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError>;
 }
 
 pub enum LegacyPacket<D> {
@@ -38,7 +41,7 @@ impl<D> Packet<D> {
         move |i| {
             let (i, size) = VarInt::parse(i)?;
             if size.0 < 0 {
-                return Err(nom::Err::Error(crate::general::ParseError::Other));
+                return Err(nom::Err::Error(crate::general::ParseError::NegativeLength));
             }
 
             let len = size.0 as usize;
@@ -50,7 +53,13 @@ impl<D> Packet<D> {
             let after_i = &i[len..];
 
             let (inner_i, packet_id) = VarInt::parse(inner_i)?;
-            let (_, inner) = parser(packet_id, inner_i)?;
+            let (remaining, inner) = parser(packet_id, inner_i)?;
+            if !remaining.is_empty() {
+                dbg!(remaining);
+                return Err(nom::Err::Error(
+                    crate::general::ParseError::RemainingDataAfterParsing { packet_id },
+                ));
+            }
 
             Ok((after_i, Self { inner }))
         }
@@ -81,18 +90,21 @@ impl<D> Packet<D> {
         }
     }
 
-    pub fn serialize(&self) -> Vec<u8> where D: PacketContentSerializer {
+    pub fn serialize(&self) -> Vec<u8>
+    where
+        D: PacketContentSerializer,
+    {
         let pid = VarInt(D::ID);
         let inner_length = self.inner.length();
-        let length_varint = VarInt(
-            inner_length as i32 + 5 +  D::PACKETTRAIL.then_some(1).unwrap_or(0)
-        );
+        let length_varint =
+            VarInt(inner_length as i32 + 5 + D::PACKETTRAIL.then_some(1).unwrap_or(0));
 
-        let mut result =
-            vec![
-                0;
-                pid.serialize_length() + length_varint.serialize_length() - 2 + inner_length + D::PACKETTRAIL.then_some(1).unwrap_or(0)
-            ];
+        let mut result = vec![
+            0;
+            pid.slen() + length_varint.slen() - 2
+                + inner_length
+                + D::PACKETTRAIL.then_some(1).unwrap_or(0)
+        ];
 
         let mut buffer = &mut result[..];
 
@@ -102,8 +114,7 @@ impl<D> Packet<D> {
         buffer[2] &= 0x7f;
         buffer = &mut buffer[3..];
 
-        let written = pid.serialize(buffer);
-        buffer = &mut buffer[written..];
+        buffer = pid.serialize(buffer).unwrap();
 
         let serialized = self.inner.serialize(buffer);
         if D::PACKETTRAIL {
@@ -127,7 +138,7 @@ impl<D> LegacyPacket<D> {
             }
             if i[0] == 0xfe {
                 dbg!("Parse Legacy Ping");
-                return Err(nom::Err::Error(crate::general::ParseError::Other))
+                return Err(nom::Err::Error(crate::general::ParseError::Other));
             }
 
             let (i, size) = VarInt::parse(i)?;

@@ -22,26 +22,32 @@ impl VarInt {
 
         Err(nom::Err::Incomplete(nom::Needed::Unknown))
     }
+}
 
-    pub fn serialize_length(&self) -> usize {
+impl crate::serialize::SerializeItem for VarInt {
+    fn slen(&self) -> usize {
         5
     }
 
-    pub fn serialize(&self, buffer: &mut [u8]) -> usize {
-        (&mut buffer[..5]).copy_from_slice(&[0x80, 0x80, 0x80, 0x80, 0x00]);
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        (&mut buf[..5]).copy_from_slice(&[0x80, 0x80, 0x80, 0x80, 0x00]);
 
         let value = self.0 as u32;
-        for (idx, cell) in buffer.iter_mut().enumerate().take(5) {
+        for (idx, cell) in buf.iter_mut().enumerate().take(5) {
             *cell |= ((value >> (idx * 7)) & 0x7f) as u8;
         }
 
-        5
+        Ok(&mut buf[5..])
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::serialize::SerializeItem;
 
     #[test]
     fn parse_empty() {

@@ -18,20 +18,23 @@ impl PString<'static> {
 
         Ok((&i[len..], PString(Cow::Owned(str_content.to_string()))))
     }
+}
 
-    pub fn serialize_length(&self) -> usize {
-        crate::general::VarInt(self.0.len() as i32).serialize_length() + self.0.len()
+impl<'s> crate::serialize::SerializeItem for PString<'s> {
+    fn slen(&self) -> usize {
+        crate::general::VarInt(self.0.len() as i32).slen() + self.0.len()
     }
 
-    pub fn serialize(&self, mut buffer: &mut [u8]) -> usize {
+    fn serialize<'b>(
+        &self,
+        mut buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         let length_varint = crate::general::VarInt(self.0.len() as i32);
 
-        let written = length_varint.serialize(buffer);
-        buffer = &mut buffer[written..];
+        buf = length_varint.serialize(buf)?;
 
-        (&mut buffer[..self.0.len()]).copy_from_slice(self.0.as_bytes());
-
-        written + self.0.len()
+        (&mut buf[..self.0.len()]).copy_from_slice(self.0.as_bytes());
+        Ok(&mut buf[self.0.len()..])
     }
 }
 
