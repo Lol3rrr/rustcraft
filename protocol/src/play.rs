@@ -26,7 +26,7 @@ pub mod client {
         pub portal_cooldown: VarInt,
     }
 
-    impl crate::packet::PacketContentSerializer for Login {
+    impl crate::packet::PacketContent for Login {
         const ID: i32 = 0x2b;
         const PACKETTRAIL: bool = false;
 

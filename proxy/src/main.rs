@@ -1,6 +1,6 @@
 use tracing_subscriber::layer::SubscriberExt;
 
-use networking::{Transport, Connection};
+use networking::{Connection, Transport};
 
 fn main() {
     let fmt_layer = tracing_subscriber::fmt::layer().with_ansi(false);
@@ -16,16 +16,11 @@ fn main() {
         .build()
         .unwrap();
 
-    let config = server::config::ServerConfig {
-        max_players: 69,
-        motd: "just a test".into(),
-    };
-
-    runtime.block_on(run_server(config));
+    runtime.block_on(run_server());
 }
 
-#[tracing::instrument(skip(server_conf))]
-async fn run_server(server_conf: server::config::ServerConfig) {
+#[tracing::instrument]
+async fn run_server() {
     let listener = tokio::net::TcpListener::bind("0.0.0.0:25565")
         .await
         .unwrap();
@@ -35,20 +30,20 @@ async fn run_server(server_conf: server::config::ServerConfig) {
     while let Ok((connection, addr)) = listener.accept().await {
         tracing::info!(?addr);
 
-        tokio::spawn(handle_connection(connection));
+        let target_connection = tokio::net::TcpStream::connect("127.0.0.1:35565").await.unwrap();
+
+        tokio::spawn(handle_connection(connection, target_connection));
     }
 
     tracing::error!("Stopped");
 }
 
-#[tracing::instrument(skip(connection))]
-async fn handle_connection(connection: tokio::net::TcpStream) {
+#[tracing::instrument(skip(connection, target))]
+async fn handle_connection(connection: tokio::net::TcpStream, target: tokio::net::TcpStream) {
     tracing::info!("Handle Connection");
 
-    let buffer = bytes::BytesMut::with_capacity(4096);
-    let connection = networking::UnencryptedConnection::new(connection);
-
-    let mut connection = Connection::new(connection, buffer);
+    let mut connection = Connection::new(networking::UnencryptedConnection::new(connection), bytes::BytesMut::with_capacity(4096));
+    let mut target_connection = Connection::new(networking::UnencryptedConnection::new(target), bytes::BytesMut::with_capacity(4096));
 
     let packet = match connection.recv_legacy_packet(
         protocol::handshake::server::Handshaking::parse,
@@ -71,7 +66,7 @@ async fn handle_connection(connection: tokio::net::TcpStream) {
         protocol::packet::LegacyPacket::Actual(d) => d,
     };
 
-    match packet_data.next_state {
+    match &packet_data.next_state {
         protocol::handshake::server::NextState::Status => {
             tracing::info!("Status");
 
@@ -90,7 +85,10 @@ where
     S: Transport,
 {
     loop {
-        let packet = match connection.recv_packet(protocol::status::server::ServerBound::parse).await
+        let packet = match connection.recv_packet(
+            protocol::status::server::ServerBound::parse,
+        )
+        .await
         {
             Ok(p) => p,
             Err(e) => {
@@ -221,7 +219,7 @@ where
     let req = http_client.request(reqwest::Method::GET, url);
     let session_resp = req.send().await.unwrap();
     let raw_response = session_resp.text().await.unwrap();
-    let session_json: server::ProfileResponse = serde_json::from_str(&raw_response).unwrap();
+    let session_json: proxy::ProfileResponse = serde_json::from_str(&raw_response).unwrap();
 
     let session_uuid = uuid::Uuid::parse_str(&session_json.id).unwrap();
 

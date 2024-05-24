@@ -9,7 +9,7 @@ pub mod client {
     #[derive(Debug, PartialEq)]
     pub struct Finish {}
 
-    impl crate::packet::PacketContentSerializer for Finish {
+    impl crate::packet::PacketContent for Finish {
         const ID: i32 = 0x03;
         const PACKETTRAIL: bool = false;
 

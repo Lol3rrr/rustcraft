@@ -18,7 +18,7 @@ impl<T, D> PacketContentParser<D> for T where
 {
 }
 
-pub trait PacketContentSerializer {
+pub trait PacketContent {
     const PACKETTRAIL: bool;
     const ID: i32;
 
@@ -92,7 +92,7 @@ impl<D> Packet<D> {
 
     pub fn serialize(&self) -> Vec<u8>
     where
-        D: PacketContentSerializer,
+        D: PacketContent,
     {
         let pid = VarInt(D::ID);
         let inner_length = self.inner.length();

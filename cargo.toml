@@ -1,5 +1,5 @@
 [workspace]
-members = [ "nbt", "networking","protocol", "server"]
+members = [ "nbt", "networking","protocol", "proxy", "server"]
 resolver = "2"
 
 [workspace.dependencies]

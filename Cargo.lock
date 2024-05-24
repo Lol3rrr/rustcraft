@@ -735,6 +735,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "proxy"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "bytes",
+ "der",
+ "networking",
+ "nom",
+ "num-bigint",
+ "openssl",
+ "protocol",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "sha1",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"

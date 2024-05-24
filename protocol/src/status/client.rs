@@ -13,7 +13,7 @@ impl StatusResponse {
     }
 }
 
-impl crate::packet::PacketContentSerializer for StatusResponse {
+impl crate::packet::PacketContent for StatusResponse {
     const PACKETTRAIL: bool = false;
     const ID: i32 = 0x00;
 
@@ -65,7 +65,7 @@ pub struct PingResponse {
     pub payload: i64,
 }
 
-impl crate::packet::PacketContentSerializer for PingResponse {
+impl crate::packet::PacketContent for PingResponse {
     const PACKETTRAIL: bool = false;
     const ID: i32 = 0x01;
 

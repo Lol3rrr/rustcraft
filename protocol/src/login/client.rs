@@ -39,7 +39,7 @@ impl EncryptionRequest {
     }
 }
 
-impl crate::packet::PacketContentSerializer for EncryptionRequest {
+impl crate::packet::PacketContent for EncryptionRequest {
     const PACKETTRAIL: bool = true;
     const ID: i32 = 0x01;
 
@@ -76,7 +76,7 @@ pub struct Property {
     pub signature: Option<PString<'static>>,
 }
 
-impl crate::packet::PacketContentSerializer for LoginSuccess {
+impl crate::packet::PacketContent for LoginSuccess {
     const PACKETTRAIL: bool = true;
     const ID: i32 = 0x02;
 

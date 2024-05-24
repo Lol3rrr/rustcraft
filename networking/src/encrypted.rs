@@ -1,4 +1,4 @@
-use crate::Connection;
+use crate::Transport;
 
 pub struct EncryptedConnection<S> {
     stream: S,
@@ -20,7 +20,7 @@ impl<S> EncryptedConnection<S> {
     }
 }
 
-impl<S> Connection for EncryptedConnection<S>
+impl<S> Transport for EncryptedConnection<S>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + core::marker::Unpin,
 {
@@ -54,7 +54,7 @@ where
 
     async fn send_packet<D>(&mut self, packet: &protocol::packet::Packet<D>) -> Result<(), ()>
     where
-        D: protocol::packet::PacketContentSerializer,
+        D: protocol::packet::PacketContent,
     {
         use tokio::io::AsyncWriteExt;
 
