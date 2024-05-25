@@ -28,6 +28,8 @@ impl EncryptionRequest {
         let verifytoken = &i[..verify_len.0 as usize];
         let i = &i[verify_len.0 as usize..];
 
+        let i = &i[1..];
+
         Ok((
             i,
             Self {
@@ -141,6 +143,8 @@ impl LoginSuccess {
 
         let (i, prop_count) = VarInt::parse(i)?;
         dbg!(i);
+
+        let i = &i[1..];
 
         Ok((
             i,

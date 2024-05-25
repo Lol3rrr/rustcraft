@@ -1,6 +1,8 @@
 //! [Docs](https://wiki.vg/Protocol#Configuration)
 
 pub mod client {
+    use crate::general::VarInt;
+
     #[derive(Debug, PartialEq)]
     pub struct RegistryData {
         pub data: (),
@@ -9,9 +11,19 @@ pub mod client {
     #[derive(Debug, PartialEq)]
     pub struct Finish {}
 
+    impl Finish {
+        pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+            if id.0 != 0x03 {
+                return Err(nom::Err::Error(crate::general::ParseError::Other));
+            }
+
+            Ok((i, Self {}))
+        }
+    }
+
     impl crate::packet::PacketContent for Finish {
         const ID: i32 = 0x03;
-        const PACKETTRAIL: bool = false;
+        const PACKETTRAIL: bool = true;
 
         fn length(&self) -> usize {
             0
@@ -27,7 +39,7 @@ pub mod client {
 }
 
 pub mod server {
-    use crate::general::{PString, VarInt};
+    use crate::{general::{PString, VarInt}, serialize::SerializeItem};
 
     #[derive(Debug, PartialEq)]
     pub enum ConfigurationMessage {
@@ -101,6 +113,35 @@ pub mod server {
         }
     }
 
+    impl crate::packet::PacketContent for ClientInformation {
+        const ID: i32 = 0x00;
+        const PACKETTRAIL: bool = false;
+
+        fn length(&self) -> usize {
+            self.locale.slen()
+            + self.view_distance.slen()
+            + self.chat_mode.slen()
+            + self.chat_colors.slen()
+            + self.displayed_skin_parts.slen()
+            + self.main_hand.slen()
+            + self.enable_text_filtering.slen()
+            + self.allow_server_listings.slen()
+        }
+
+        fn serialize<'b>(&self, mut buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+            buffer = self.locale.serialize(buffer)?;
+buffer = self.view_distance.serialize(buffer)?;
+buffer = self.chat_mode.serialize(buffer)?;
+buffer = self.chat_colors.serialize(buffer)?;
+buffer = self.displayed_skin_parts.serialize(buffer)?;
+buffer = self.main_hand.serialize(buffer)?;
+buffer = self.enable_text_filtering.serialize(buffer)?;
+buffer = self.allow_server_listings.serialize(buffer)?;
+
+            Ok(buffer)
+        }
+    }
+
     #[derive(Debug, PartialEq)]
     pub struct PluginMessage {
         pub channel: PString<'static>,
@@ -139,6 +180,18 @@ pub mod server {
             }
 
             Ok((i, Self {}))
+        }
+    }
+
+    impl crate::packet::PacketContent for AckFinish {
+        const ID: i32 = 0x03;
+        const PACKETTRAIL: bool = false;
+
+        fn length(&self) -> usize {
+            0
+        }
+        fn serialize<'b>(&self, buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+            Ok(buffer)
         }
     }
 }

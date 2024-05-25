@@ -1,4 +1,4 @@
-use crate::Transport;
+use crate::{TransportReceive, TransportSend};
 
 pub struct EncryptedConnection<S> {
     stream: S,
@@ -20,9 +20,9 @@ impl<S> EncryptedConnection<S> {
     }
 }
 
-impl<S> Transport for EncryptedConnection<S>
+impl<S> TransportReceive for EncryptedConnection<S>
 where
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + core::marker::Unpin,
+    S: tokio::io::AsyncRead + core::marker::Unpin,
 {
     async fn recv(&mut self, buf: &mut bytes::BytesMut) -> Result<usize, ()> {
         use bytes::BufMut;
@@ -51,11 +51,34 @@ where
 
         Ok(decrypted)
     }
+}
 
+impl<S> TransportSend for EncryptedConnection<S>
+where
+    S: tokio::io::AsyncWrite + core::marker::Unpin,
+{
     async fn send_packet<D>(&mut self, packet: &protocol::packet::Packet<D>) -> Result<(), ()>
     where
         D: protocol::packet::PacketContent,
     {
+        use tokio::io::AsyncWriteExt;
+
+        let raw_bytes = packet.serialize();
+        let mut output = vec![0; raw_bytes.len()];
+
+        let encrypted = self.write_c.update(&raw_bytes, &mut output).unwrap();
+
+        self.stream
+            .write_all(&output[..encrypted])
+            .await
+            .map(|_| ())
+            .map_err(|e| {
+                dbg!(e);
+                ()
+            })
+    }
+
+    async fn send_rawpacket(&mut self, packet: &protocol::packet::RawPacket) -> Result<(), ()> {
         use tokio::io::AsyncWriteExt;
 
         let raw_bytes = packet.serialize();

@@ -1,6 +1,6 @@
 use tracing_subscriber::layer::SubscriberExt;
 
-use networking::{Transport, Connection};
+use networking::{Connection, Transport};
 
 fn main() {
     let fmt_layer = tracing_subscriber::fmt::layer().with_ansi(false);
@@ -50,10 +50,9 @@ async fn handle_connection(connection: tokio::net::TcpStream) {
 
     let mut connection = Connection::new(connection, buffer);
 
-    let packet = match connection.recv_legacy_packet(
-        protocol::handshake::server::Handshaking::parse,
-    )
-    .await
+    let packet = match connection
+        .recv_legacy_packet(protocol::handshake::server::Handshaking::parse)
+        .await
     {
         Ok(p) => p,
         Err(e) => {
@@ -90,7 +89,9 @@ where
     S: Transport,
 {
     loop {
-        let packet = match connection.recv_packet(protocol::status::server::ServerBound::parse).await
+        let packet = match connection
+            .recv_packet(protocol::status::server::ServerBound::parse)
+            .await
         {
             Ok(p) => p,
             Err(e) => {
@@ -146,11 +147,10 @@ async fn login<S>(mut connection: Connection<networking::UnencryptedConnection<S
 where
     S: core::marker::Unpin + tokio::io::AsyncRead + tokio::io::AsyncWrite,
 {
-    let login_start_packet = connection.recv_packet(
-        protocol::login::server::LoginStart::parse,
-    )
-    .await
-    .unwrap();
+    let login_start_packet = connection
+        .recv_packet(protocol::login::server::LoginStart::parse)
+        .await
+        .unwrap();
     tracing::info!(?login_start_packet);
 
     let private_key = openssl::rsa::Rsa::generate(1024).unwrap();
@@ -174,10 +174,9 @@ where
 
     tracing::info!("Send EncryptionRequest");
 
-    let encryption_response = match connection.recv_packet(
-        protocol::login::server::EncryptionResponse::parse,
-    )
-    .await
+    let encryption_response = match connection
+        .recv_packet(protocol::login::server::EncryptionResponse::parse)
+        .await
     {
         Ok(p) => p,
         Err(e) => {
@@ -235,32 +234,31 @@ where
 
     let mut connection = connection.map_transport(|c| {
         c.encrypt(
-        openssl::symm::Crypter::new(
-            openssl::symm::Cipher::aes_128_cfb8(),
-            openssl::symm::Mode::Decrypt,
-            shared_secret,
-            Some(shared_secret),
+            openssl::symm::Crypter::new(
+                openssl::symm::Cipher::aes_128_cfb8(),
+                openssl::symm::Mode::Decrypt,
+                shared_secret,
+                Some(shared_secret),
+            )
+            .unwrap(),
+            openssl::symm::Crypter::new(
+                openssl::symm::Cipher::aes_128_cfb8(),
+                openssl::symm::Mode::Encrypt,
+                shared_secret,
+                Some(shared_secret),
+            )
+            .unwrap(),
         )
-        .unwrap(),
-        openssl::symm::Crypter::new(
-            openssl::symm::Cipher::aes_128_cfb8(),
-            openssl::symm::Mode::Encrypt,
-            shared_secret,
-            Some(shared_secret),
-        )
-        .unwrap(),
-    )
     });
 
     connection.send_packet(&response_packet).await.unwrap();
 
     tracing::info!("Send Login Success");
 
-    let packet = connection.recv_packet(
-        protocol::login::server::LoginAck::parse,
-    )
-    .await
-    .unwrap();
+    let packet = connection
+        .recv_packet(protocol::login::server::LoginAck::parse)
+        .await
+        .unwrap();
     tracing::info!(?packet, "Login was Acknowledged");
 
     configuration(connection).await;
@@ -273,10 +271,9 @@ where
     tracing::info!("Entering Configuration State of the connection");
 
     loop {
-        let packet = match connection.recv_packet(
-            protocol::configuration::server::ConfigurationMessage::parse,
-        )
-        .await
+        let packet = match connection
+            .recv_packet(protocol::configuration::server::ConfigurationMessage::parse)
+            .await
         {
             Ok(p) => p,
             Err(e) => {

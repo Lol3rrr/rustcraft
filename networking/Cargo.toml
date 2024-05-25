@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 protocol = { path = "../protocol/" }
-tokio = { version = "1.37", default-features = false, features = ["net", "time", "rt", "io-util"] }
+tokio = { version = "1.37", default-features = false, features = ["net", "time", "rt", "io-util", "macros"] }
 bytes = { workspace = true }
 nom = { version = "7.1.3" }
 

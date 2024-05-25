@@ -5,7 +5,10 @@ pub mod client {}
 
 /// Serverbound messages
 pub mod server {
-    use crate::general::{PString, VarInt};
+    use crate::{
+        general::{PString, VarInt},
+        serialize::SerializeItem,
+    };
 
     #[derive(Debug, PartialEq)]
     pub struct Handshaking {
@@ -54,6 +57,32 @@ pub mod server {
                     next_state,
                 },
             ))
+        }
+    }
+
+    impl crate::packet::PacketContent for Handshaking {
+        const ID: i32 = 0x00;
+        const PACKETTRAIL: bool = false;
+
+        fn length(&self) -> usize {
+            self.protocol_version.slen()
+                + self.server_addr.slen()
+                + self.server_port.slen()
+                + VarInt(0).slen()
+        }
+
+        fn serialize<'b>(
+            &self,
+            mut buffer: &'b mut [u8],
+        ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+            buffer = self.protocol_version.serialize(buffer)?;
+            buffer = self.server_addr.serialize(buffer)?;
+            buffer = self.server_port.serialize(buffer)?;
+            buffer = match &self.next_state {
+                NextState::Status => VarInt(1).serialize(buffer)?,
+                NextState::Login => VarInt(2).serialize(buffer)?,
+            };
+            Ok(buffer)
         }
     }
 

@@ -1,15 +1,31 @@
-use crate::{general::VarInt, serialize::SerializeItem};
+use crate::{
+    general::{PString, VarInt},
+    serialize::SerializeItem,
+};
 use serde::Serialize;
 
+#[derive(Debug)]
 pub struct StatusResponse {
-    content: String,
+    content: PString<'static>,
 }
 
 impl StatusResponse {
     pub fn new(content: &StatusResponseContent) -> Self {
         let content = serde_json::to_string(content).unwrap();
 
-        Self { content }
+        Self {
+            content: PString(std::borrow::Cow::Owned(content)),
+        }
+    }
+
+    pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        if id.0 != 0x00 {
+            return Err(nom::Err::Error(crate::general::ParseError::Other));
+        }
+
+        let (i, content) = PString::parse(i)?;
+
+        Ok((i, Self { content }))
     }
 }
 
@@ -18,17 +34,14 @@ impl crate::packet::PacketContent for StatusResponse {
     const ID: i32 = 0x00;
 
     fn length(&self) -> usize {
-        5 + self.content.len()
+        self.content.slen()
     }
 
     fn serialize<'b>(
         &self,
-        mut buffer: &'b mut [u8],
+        buffer: &'b mut [u8],
     ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-        buffer = VarInt(self.content.len() as i32).serialize(buffer)?;
-        (&mut buffer[..self.content.len()]).copy_from_slice(self.content.as_bytes());
-
-        Ok(&mut buffer[..self.content.len()])
+        self.content.serialize(buffer)
     }
 }
 
@@ -61,8 +74,21 @@ pub struct StatusDescription {
     pub text: String,
 }
 
+#[derive(Debug)]
 pub struct PingResponse {
     pub payload: i64,
+}
+
+impl PingResponse {
+    pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        if id.0 != 0x01 {
+            return Err(nom::Err::Error(crate::general::ParseError::Other));
+        }
+
+        let (i, payload) = nom::number::streaming::be_i64(i)?;
+
+        Ok((i, Self { payload }))
+    }
 }
 
 impl crate::packet::PacketContent for PingResponse {

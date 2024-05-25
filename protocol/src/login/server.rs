@@ -1,4 +1,7 @@
-use crate::general::{PString, VarInt};
+use crate::{
+    general::{PString, VarInt},
+    serialize::SerializeItem,
+};
 
 #[derive(Debug, PartialEq)]
 pub struct LoginStart {
@@ -16,6 +19,24 @@ impl LoginStart {
         let (i, uuid) = nom::number::streaming::be_u128(i)?;
 
         Ok((i, Self { name, uuid }))
+    }
+}
+
+impl crate::packet::PacketContent for LoginStart {
+    const ID: i32 = 0x00;
+    const PACKETTRAIL: bool = false;
+
+    fn length(&self) -> usize {
+        self.name.slen() + self.uuid.slen()
+    }
+
+    fn serialize<'b>(
+        &self,
+        mut buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        buffer = self.name.serialize(buffer)?;
+        buffer = self.uuid.serialize(buffer)?;
+        Ok(buffer)
     }
 }
 
@@ -61,5 +82,20 @@ impl LoginAck {
         }
 
         Ok((i, Self {}))
+    }
+}
+
+impl crate::packet::PacketContent for LoginAck {
+    const ID: i32 = 0x03;
+    const PACKETTRAIL: bool = false;
+
+    fn length(&self) -> usize {
+        0
+    }
+    fn serialize<'b>(
+        &self,
+        buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        Ok(buffer)
     }
 }

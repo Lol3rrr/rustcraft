@@ -45,6 +45,20 @@ impl SerializeItem for i8 {
         Ok(&mut buf[1..])
     }
 }
+impl SerializeItem for u16 {
+    fn slen(&self) -> usize {
+        2
+    }
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        if buf.len() < 2 {
+            return Err(SerializeError::NotEnoughSpace {
+                missing: 2 - buf.len(),
+            });
+        }
+        (buf[..2]).copy_from_slice(&self.to_be_bytes());
+        Ok(&mut buf[2..])
+    }
+}
 impl SerializeItem for i32 {
     fn slen(&self) -> usize {
         4
@@ -71,6 +85,20 @@ impl SerializeItem for i64 {
         }
         (buf[..8]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[8..])
+    }
+}
+impl SerializeItem for u128 {
+    fn slen(&self) -> usize {
+        16
+    }
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        if buf.len() < 16 {
+            return Err(SerializeError::NotEnoughSpace {
+                missing: 16 - buf.len(),
+            });
+        }
+        (buf[..16]).copy_from_slice(&self.to_be_bytes());
+        Ok(&mut buf[16..])
     }
 }
 
