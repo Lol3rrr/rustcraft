@@ -21,7 +21,10 @@ pub trait TransportSend {
     where
         D: protocol::packet::PacketContent;
 
-    fn send_rawpacket(&mut self, packet: &protocol::packet::RawPacket) -> impl core::future::Future<Output = Result<(), ()>>;
+    fn send_rawpacket(
+        &mut self,
+        packet: &protocol::packet::RawPacket,
+    ) -> impl core::future::Future<Output = Result<(), ()>>;
 }
 
 pub struct Connection<T> {

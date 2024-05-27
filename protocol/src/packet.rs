@@ -127,12 +127,12 @@ impl<D> Packet<D> {
 
 pub struct RawPacket {
     pub id: VarInt,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 impl RawPacket {
-    pub fn parse<'i>() -> impl FnMut(&'i [u8]) -> nom::IResult<&'i [u8], Self, crate::general::ParseError>
-    {
+    pub fn parse<'i>(
+    ) -> impl FnMut(&'i [u8]) -> nom::IResult<&'i [u8], Self, crate::general::ParseError> {
         move |i| {
             let (i, size) = VarInt::parse(i)?;
             if size.0 < 0 {
@@ -150,14 +150,19 @@ impl RawPacket {
             let (inner_i, packet_id) = VarInt::parse(inner_i)?;
             let content = inner_i.to_vec();
 
-            Ok((after_i, Self { id: packet_id, data: content }))
+            Ok((
+                after_i,
+                Self {
+                    id: packet_id,
+                    data: content,
+                },
+            ))
         }
     }
 
     pub fn parse_bytes(
         bytes: &mut bytes::BytesMut,
-    ) -> nom::IResult<(), Self, crate::general::ParseError>
-    {
+    ) -> nom::IResult<(), Self, crate::general::ParseError> {
         let result = match Self::parse()(&bytes) {
             Ok((rem, v)) => {
                 let to_advance = bytes.len() - rem.len();
@@ -179,14 +184,9 @@ impl RawPacket {
     pub fn serialize(&self) -> Vec<u8> {
         let pid = self.id;
         let inner_length = self.data.len();
-        let length_varint =
-            VarInt(inner_length as i32 + 5);
+        let length_varint = VarInt(inner_length as i32 + 5);
 
-        let mut result = vec![
-            0;
-            pid.slen() + length_varint.slen() - 2
-                + inner_length
-        ];
+        let mut result = vec![0; pid.slen() + length_varint.slen() - 2 + inner_length];
 
         let mut buffer = &mut result[..];
 

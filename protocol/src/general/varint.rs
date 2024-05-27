@@ -1,8 +1,26 @@
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct VarInt(pub i32);
 
-impl VarInt {
-    pub fn parse(mut i: &[u8]) -> nom::IResult<&[u8], Self, super::ParseError> {
+impl crate::serialize::SerializeItem for VarInt {
+    fn slen(&self) -> usize {
+        5
+    }
+
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        (&mut buf[..5]).copy_from_slice(&[0x80, 0x80, 0x80, 0x80, 0x00]);
+
+        let value = self.0 as u32;
+        for (idx, cell) in buf.iter_mut().enumerate().take(5) {
+            *cell |= ((value >> (idx * 7)) & 0x7f) as u8;
+        }
+
+        Ok(&mut buf[5..])
+    }
+
+    fn parse(mut i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
         if i.is_empty() {
             return Err(nom::Err::Incomplete(nom::Needed::Unknown));
         }
@@ -21,26 +39,6 @@ impl VarInt {
         }
 
         Err(nom::Err::Incomplete(nom::Needed::Unknown))
-    }
-}
-
-impl crate::serialize::SerializeItem for VarInt {
-    fn slen(&self) -> usize {
-        5
-    }
-
-    fn serialize<'b>(
-        &self,
-        buf: &'b mut [u8],
-    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-        (&mut buf[..5]).copy_from_slice(&[0x80, 0x80, 0x80, 0x80, 0x00]);
-
-        let value = self.0 as u32;
-        for (idx, cell) in buf.iter_mut().enumerate().take(5) {
-            *cell |= ((value >> (idx * 7)) & 0x7f) as u8;
-        }
-
-        Ok(&mut buf[5..])
     }
 }
 

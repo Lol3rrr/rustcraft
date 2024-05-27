@@ -5,25 +5,6 @@ pub struct Position {
     pub y: i16,
 }
 
-impl Position {
-    pub fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, super::ParseError> {
-        let (i, raw) = nom::number::streaming::be_i64(i)?;
-
-        let x = raw >> 38;
-        let y = raw << 52 >> 52;
-        let z = raw << 26 >> 38;
-
-        Ok((
-            i,
-            Self {
-                x: x as i32,
-                z: z as i32,
-                y: y as i16,
-            },
-        ))
-    }
-}
-
 impl crate::serialize::SerializeItem for Position {
     fn slen(&self) -> usize {
         8
@@ -40,6 +21,23 @@ impl crate::serialize::SerializeItem for Position {
         value |= (self.y as i64) & 0x0000000000000fff;
 
         value.serialize(buf)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, raw) = nom::number::streaming::be_i64(i)?;
+
+        let x = raw >> 38;
+        let y = raw << 52 >> 52;
+        let z = raw << 26 >> 38;
+
+        Ok((
+            i,
+            Self {
+                x: x as i32,
+                z: z as i32,
+                y: y as i16,
+            },
+        ))
     }
 }
 

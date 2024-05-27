@@ -127,6 +127,10 @@ impl crate::serialize::SerializeItem for Property {
 
         Ok(buffer)
     }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        todo!()
+    }
 }
 
 impl LoginSuccess {
@@ -136,13 +140,8 @@ impl LoginSuccess {
         }
 
         let (i, uuid) = nom::number::streaming::be_u128(i)?;
-        dbg!(i);
-
         let (i, name) = PString::parse(i)?;
-        dbg!(i);
-
         let (i, prop_count) = VarInt::parse(i)?;
-        dbg!(i);
 
         let i = &i[1..];
 

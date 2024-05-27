@@ -727,6 +727,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "bytes",
+ "nbt",
  "nom",
  "openssl",
  "serde",

@@ -209,9 +209,21 @@ where
                         return;
                     }
                 };
-                tracing::info!("Client-Packet: {:?}", packet.id);
+
+                match protocol::configuration::server::ConfigurationMessage::parse(packet.id, &packet.data) {
+                    Ok(known) => {
+                        tracing::info!("Client: {:#?}", known);
+                    }
+                    Err(_) => {
+                        tracing::error!("Client-Packet: {:?}", packet.id);
+                    }
+                };
 
                 target.send_rawpacket(&packet).await.unwrap();
+
+                if packet.id.0 == <protocol::configuration::server::AckFinish as protocol::packet::PacketContent>::ID {
+                    break;
+                }
             }
             server_packet = target.recv_rawpacket() => {
                 let packet = match server_packet {
@@ -221,42 +233,73 @@ where
                         return;
                     }
                 };
-                tracing::info!("Server-Packet: {:?}", packet.id);
+
+                match protocol::configuration::client::Configuration::parse(packet.id, &packet.data) {
+                    Ok(known) => {
+                        tracing::info!("Server: {:#?}", known);
+                    }
+                    Err(_) => {
+                        tracing::error!("Server-Packet: {:?}", packet.id);
+                    }
+                };
 
                 connection.send_rawpacket(&packet).await.unwrap();
             }
         }
     }
+
+    play(connection, target).await;
 }
 
+#[tracing::instrument(skip(connection, target))]
 async fn play<S, S2>(mut connection: Connection<S>, mut target: Connection<S2>)
 where
     S: Transport,
-    S2: Transport
+    S2: Transport,
 {
-    let login = protocol::packet::Packet {
-        inner: protocol::play::client::Login {
-            entity_id: 0,
-            is_hardcore: false,
-            dimensions: Vec::new(),
-            max_players: protocol::general::VarInt(69),
-            view_distance: protocol::general::VarInt(4),
-            simulation_distance: protocol::general::VarInt(4),
-            reduced_debug_info: false,
-            enable_respawn_rule: true,
-            do_limited_crafting: false,
-            dimension_type: protocol::general::VarInt(0),
-            dimension_name: protocol::general::PString("overworld".into()),
-            hashed_seed: 0,
-            game_mode: 1,
-            previous_game_mode: -1,
-            is_debug: false,
-            is_flat: false,
-            death_location: None,
-            portal_cooldown: protocol::general::VarInt(10),
-        },
-    };
-    connection.send_packet(&login).await.unwrap();
+    // TODO
+    // How do we actually store/capture these packets for use afterwards
 
-    tracing::info!("Send Login Packet");
+    loop {
+        tokio::select! {
+            user_packet = connection.recv_rawpacket() => {
+                let packet = match user_packet {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Receiving from User: {:?}", e);
+                        return;
+                    }
+                };
+                tracing::info!("[CLIENT] 0x{:02x} - Size: {:?}", packet.id.0, packet.data.len());
+
+                if let Err(e) = target.send_rawpacket(&packet).await {
+                    tracing::error!("Forwaring to server: {:?}", e);
+                    return;
+                }
+            }
+            server_packet = target.recv_rawpacket() => {
+                let packet = match server_packet {
+                    Ok(packet) => packet,
+                    Err(e) => {
+                        tracing::error!("Receiving from Server: {:?}", e);
+                        return;
+                    }
+                };
+
+                match protocol::play::client::Play::parse(packet.id, &packet.data) {
+                    Ok((_, packet)) => {
+                        // tracing::info!("[SERVER] {:#?}", packet);
+                    }
+                    Err(e) => {
+                        tracing::error!("[SERVER] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
+                    }
+                };
+
+                if let Err(e) = connection.send_rawpacket(&packet).await {
+                    tracing::error!("Forwaring to client: {:?}", e);
+                    return;
+                }
+            }
+        }
+    }
 }

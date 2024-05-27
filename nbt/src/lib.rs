@@ -277,10 +277,10 @@ impl Tag {
                 nom::combinator::map(
                     nom::sequence::tuple((
                         nom::bytes::streaming::tag([0x0a]),
-                        Self::parse_name,
+                        nom::combinator::cond(!network, Self::parse_name),
                         Self::parse_compound_inner,
                     )),
-                    |(_, name, parts)| (name, Self::Compound(parts)),
+                    |(_, name, parts)| (name.unwrap_or(String::new()), Self::Compound(parts)),
                 ),
                 nom::combinator::map(
                     nom::sequence::tuple((

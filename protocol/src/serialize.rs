@@ -4,9 +4,11 @@ pub enum SerializeError {
     Other(&'static str),
 }
 
-pub trait SerializeItem {
+pub trait SerializeItem: Sized {
     fn slen(&self) -> usize;
     fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError>;
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError>;
 }
 
 impl SerializeItem for bool {
@@ -20,6 +22,10 @@ impl SerializeItem for bool {
         buf[0] = if *self { 1 } else { 0 };
         Ok(&mut buf[1..])
     }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, raw) = nom::number::streaming::be_u8(i)?;
+        Ok((i, raw == 0x01))
+    }
 }
 impl SerializeItem for u8 {
     fn slen(&self) -> usize {
@@ -32,6 +38,9 @@ impl SerializeItem for u8 {
         buf[0] = *self;
         Ok(&mut buf[1..])
     }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_u8(i)
+    }
 }
 impl SerializeItem for i8 {
     fn slen(&self) -> usize {
@@ -43,6 +52,9 @@ impl SerializeItem for i8 {
         }
         (buf[..1]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[1..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_i8(i)
     }
 }
 impl SerializeItem for u16 {
@@ -58,6 +70,26 @@ impl SerializeItem for u16 {
         (buf[..2]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[2..])
     }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_u16(i)
+    }
+}
+impl SerializeItem for i16 {
+    fn slen(&self) -> usize {
+        2
+    }
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        if buf.len() < 2 {
+            return Err(SerializeError::NotEnoughSpace {
+                missing: 2 - buf.len(),
+            });
+        }
+        (buf[..2]).copy_from_slice(&self.to_be_bytes());
+        Ok(&mut buf[2..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_i16(i)
+    }
 }
 impl SerializeItem for i32 {
     fn slen(&self) -> usize {
@@ -71,6 +103,9 @@ impl SerializeItem for i32 {
         }
         (buf[..4]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[4..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_i32(i)
     }
 }
 impl SerializeItem for i64 {
@@ -86,6 +121,9 @@ impl SerializeItem for i64 {
         (buf[..8]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[8..])
     }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_i64(i)
+    }
 }
 impl SerializeItem for u128 {
     fn slen(&self) -> usize {
@@ -99,6 +137,43 @@ impl SerializeItem for u128 {
         }
         (buf[..16]).copy_from_slice(&self.to_be_bytes());
         Ok(&mut buf[16..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_u128(i)
+    }
+}
+impl SerializeItem for f32 {
+    fn slen(&self) -> usize {
+        4
+    }
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        if buf.len() < 4 {
+            return Err(SerializeError::NotEnoughSpace {
+                missing: 4 - buf.len(),
+            });
+        }
+        (buf[..4]).copy_from_slice(&self.to_be_bytes());
+        Ok(&mut buf[4..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_f32(i)
+    }
+}
+impl SerializeItem for f64 {
+    fn slen(&self) -> usize {
+        8
+    }
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        if buf.len() < 8 {
+            return Err(SerializeError::NotEnoughSpace {
+                missing: 8 - buf.len(),
+            });
+        }
+        (buf[..8]).copy_from_slice(&self.to_be_bytes());
+        Ok(&mut buf[8..])
+    }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        nom::number::streaming::be_f64(i)
     }
 }
 
@@ -119,6 +194,15 @@ where
             None => false.serialize(buf),
         }
     }
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, exists) = bool::parse(i)?;
+        if exists {
+            let (i, value) = T::parse(i)?;
+            Ok((i, Some(value)))
+        } else {
+            Ok((i, None))
+        }
+    }
 }
 impl<T> SerializeItem for Vec<T>
 where
@@ -136,6 +220,19 @@ where
         }
         Ok(buf)
     }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (mut i, raw_len) = crate::general::VarInt::parse(i)?;
+        let mut parts = Vec::with_capacity(raw_len.0 as usize);
+
+        for _ in 0..raw_len.0 {
+            let (n_i, tmp) = T::parse(i)?;
+            i = n_i;
+            parts.push(tmp);
+        }
+
+        Ok((i, parts))
+    }
 }
 
 impl<T1, T2> SerializeItem for (T1, T2)
@@ -150,5 +247,12 @@ where
     fn serialize<'b>(&self, mut buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
         buf = self.0.serialize(buf)?;
         self.1.serialize(buf)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, v1) = T1::parse(i)?;
+        let (i, v2) = T2::parse(i)?;
+
+        Ok((i, (v1, v2)))
     }
 }

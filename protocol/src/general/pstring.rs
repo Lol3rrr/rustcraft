@@ -3,23 +3,6 @@ use std::borrow::Cow;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Clone)]
 pub struct PString<'s>(pub Cow<'s, str>);
 
-impl PString<'static> {
-    pub fn parse<'i>(i: &'i [u8]) -> nom::IResult<&'i [u8], Self, super::ParseError> {
-        let (i, length) = super::VarInt::parse(i)?;
-        if length.0 < 0 {
-            return Err(nom::Err::Error(super::ParseError::NegativeLength));
-        }
-
-        let len = length.0 as usize;
-        let content = &i[..len];
-
-        let str_content = core::str::from_utf8(content)
-            .map_err(|_| nom::Err::Error(super::ParseError::ParseString))?;
-
-        Ok((&i[len..], PString(Cow::Owned(str_content.to_string()))))
-    }
-}
-
 impl<'s> crate::serialize::SerializeItem for PString<'s> {
     fn slen(&self) -> usize {
         crate::general::VarInt(self.0.len() as i32).slen() + self.0.len()
@@ -36,11 +19,27 @@ impl<'s> crate::serialize::SerializeItem for PString<'s> {
         (&mut buf[..self.0.len()]).copy_from_slice(self.0.as_bytes());
         Ok(&mut buf[self.0.len()..])
     }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, length) = super::VarInt::parse(i)?;
+        if length.0 < 0 {
+            return Err(nom::Err::Error(super::ParseError::NegativeLength));
+        }
+
+        let len = length.0 as usize;
+        let content = &i[..len];
+
+        let str_content = core::str::from_utf8(content)
+            .map_err(|_| nom::Err::Error(super::ParseError::ParseString))?;
+
+        Ok((&i[len..], PString(Cow::Owned(str_content.to_string()))))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::serialize::SerializeItem;
 
     #[test]
     fn empty_string() {

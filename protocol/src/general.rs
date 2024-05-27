@@ -9,10 +9,12 @@ pub use position::Position;
 
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
+    WrongPacketId { expected: i32, received: i32 },
     NegativeLength,
     ParseString,
     RemainingDataAfterParsing { packet_id: VarInt },
     Other,
+    NotImplemented(&'static str),
 }
 
 impl nom::error::ParseError<&[u8]> for ParseError {
