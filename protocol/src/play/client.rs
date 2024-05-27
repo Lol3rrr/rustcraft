@@ -1,6 +1,6 @@
 use crate::{
     declare_packet,
-    general::{PString, Position, VarInt},
+    general::{PString, Position, VarInt, BitSet},
     serialize::SerializeItem,
 };
 
@@ -13,6 +13,8 @@ pub enum Play {
     ChunkBatchStart(ChunkBatchStart),
     EntityEvent(EntityEvent),
     UnloadChunk(UnloadChunk),
+    ChunkDataAndUpdateLight(ChunkDataAndUpdateLight),
+    UpdateLight(UpdateLight),
     Login(Login),
     UpdateEntityPosition(UpdateEntityPosition),
     UpdateEntityPositionAndRotation(UpdateEntityPositionAndRotation),
@@ -22,6 +24,7 @@ pub enum Play {
     SetEntityMetadata(SetEntityMetadata),
     SetEntityVelocity(SetEntityVelocity),
     UpdateTime(UpdateTime),
+    SoundEffect(SoundEffect),
     TeleportEntity(TeleportEntity),
 }
 
@@ -81,18 +84,14 @@ impl Play {
             0x26 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "ClientBound-KeepAlive",
             ))),
-            0x27 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "ChunkDataAndUpdateLight",
-            ))),
+            0x27 => ChunkDataAndUpdateLight::parse(id, i).map(|(i, v)| (i, Self::ChunkDataAndUpdateLight(v))),
             0x28 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "WorldEvent",
             ))),
             0x29 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "Particle",
             ))),
-            0x2a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Update Light",
-            ))),
+            0x2a => UpdateLight::parse(id, i).map(|(i, v)| (i, Self::UpdateLight(v))),
             0x2b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "Login",
             ))),
@@ -124,9 +123,7 @@ impl Play {
                 "SetEquipment",
             ))),
             0x64 => UpdateTime::parse(id, i).map(|(i, v)| (i, Self::UpdateTime(v))),
-            0x68 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SoundEffect",
-            ))),
+            0x68 => SoundEffect::parse(id, i).map(|(i, v)| (i, Self::SoundEffect(v))),
             0x70 => TeleportEntity::parse(id, i).map(|(i, v)| (i, Self::TeleportEntity(v))),
             0x75 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "UpdateAttributes",
@@ -321,3 +318,137 @@ declare_packet!(
     (pitch, u8),
     (on_ground, bool)
 );
+
+#[derive(Debug, PartialEq)]
+pub struct BlockEntity {
+    pub x: u8,
+    pub z: u8,
+    pub y: i16,
+    pub ty: VarInt,
+    pub data: nbt::Tag,
+}
+
+impl SerializeItem for BlockEntity {
+    fn slen(&self) -> usize {
+        todo!()
+    }
+
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, packed_xz) = nom::number::streaming::be_u8(i)?;
+        let (i, y) = nom::number::streaming::be_i16(i)?;
+        let (i, ty) = VarInt::parse(i)?;
+
+        let (i, (n_name, data)) = nbt::Tag::parse(false, true)(i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+
+        Ok((i, Self {
+            x: packed_xz >> 4,
+            z: packed_xz & 0x0f,
+            y,
+            ty,
+            data,
+        }))
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct HeightMap(pub nbt::Tag);
+
+impl SerializeItem for HeightMap {
+    fn slen(&self) -> usize {
+        todo!()
+    }
+
+    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, (_, value)) = nbt::Tag::parse(false, true)(i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+        Ok((i, Self(value)))
+    }
+}
+
+declare_packet!(
+    ChunkDataAndUpdateLight, 
+    0x27, 
+    false, 
+    (chunk_x, i32), 
+    (chunk_z, i32), 
+    (height_maps, HeightMap), 
+    (data, Vec<i8>), 
+    (block_entities, Vec<BlockEntity>),
+    (sky_light_mask, BitSet),
+    (block_light_mask, BitSet),
+    (empty_sky_light_mask, BitSet),
+    (sky_light_arrays, Vec<Vec<i8>>),
+    (block_light_arrays, Vec<Vec<i8>>)
+);
+
+declare_packet!(
+    UpdateLight, 
+    0x2a, 
+    false, 
+    (chunk_x, VarInt), 
+    (chunk_z, VarInt), 
+    (sky_light_mask, BitSet),
+    (block_light_mask, BitSet),
+    (empty_sky_light_mask, BitSet),
+    (sky_light_arrays, Vec<Vec<i8>>),
+    (block_light_arrays, Vec<Vec<i8>>)
+);
+
+#[derive(Debug, PartialEq)]
+pub enum SoundID {
+    Id (VarInt),
+    NamedId {
+        name: PString<'static>,
+        fixed_range: Option<f32>,
+    },
+}
+
+impl SerializeItem for SoundID {
+    fn slen(&self) -> usize {
+        match self {
+            Self::Id(v) => VarInt(v.0 + 1).slen(),
+            Self::NamedId { name, fixed_range } => {
+                VarInt(0).slen() + name.slen() + fixed_range.slen()
+            }
+        }
+    }
+
+    fn serialize<'b>(&self, mut buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        match self {
+            Self::Id(v) => { 
+                VarInt(v.0 + 1).serialize(buffer)
+            }
+            Self::NamedId { name, fixed_range } => {
+                buffer = VarInt(0).serialize(buffer)?;
+                buffer = name.serialize(buffer)?;
+                buffer = fixed_range.serialize(buffer)?;
+                Ok(buffer)
+            }
+        }
+    }
+    
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, id) = VarInt::parse(i)?;
+
+        if id.0 == 0 {
+            let (i, name) = PString::parse(i)?;
+            let (i, fixed_range) = Option::<f32>::parse(i)?;
+
+            Ok((i, Self::NamedId {
+                name,
+                fixed_range,
+            }))
+        } else {
+            Ok((i, Self::Id(VarInt(id.0 - 1))))
+        }
+    }
+}
+
+declare_packet!(SoundEffect, 0x68, false, (id, SoundID), (sound_category, VarInt), (effect_position_x, i32), (effect_position_y, i32), (effect_position_z, i32), (volume, f32), (pitch, f32), (seed, i64));

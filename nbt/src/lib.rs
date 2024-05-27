@@ -304,20 +304,17 @@ impl Tag {
 
     fn parse_name(i: &[u8]) -> nom::IResult<&[u8], String, ()> {
         let (i, length) = nom::number::streaming::be_u16(i)?;
-        dbg!(i, length);
 
         let raw_name = &i[..length as usize];
         let i = &i[length as usize..];
 
         let name = core::str::from_utf8(raw_name).unwrap();
-        dbg!(name);
 
         Ok((i, name.to_string()))
     }
 
     fn parse_byte_array(i: &[u8]) -> nom::IResult<&[u8], Vec<u8>, ()> {
         let (i, length) = nom::number::streaming::be_i32(i)?;
-        dbg!(i, length);
 
         let raw_content = &i[..length as usize];
         let i = &i[length as usize..];
@@ -336,10 +333,8 @@ impl Tag {
 
     fn parse_list(i: &[u8]) -> nom::IResult<&[u8], Vec<Tag>, ()> {
         let (i, expected_tag) = nom::number::streaming::u8(i)?;
-        dbg!(i, expected_tag);
 
         let (i, length) = nom::number::streaming::be_i32(i)?;
-        dbg!(i, length);
 
         let mut result = Vec::with_capacity(length as usize);
         for _ in 0..length {
@@ -353,14 +348,11 @@ impl Tag {
         let (i, (inner, _)) =
             nom::multi::many_till(Self::parse(false, false), nom::bytes::complete::tag([0x00]))(i)?;
 
-        dbg!(&inner);
-
         Ok((i, inner.into_iter().collect()))
     }
 
     fn parse_int_array(i: &[u8]) -> nom::IResult<&[u8], Vec<i32>, ()> {
         let (mut i, length) = nom::number::streaming::be_i32(i)?;
-        dbg!(i, length);
 
         let mut result = Vec::with_capacity(length as usize);
         for _ in 0..length {
@@ -374,7 +366,6 @@ impl Tag {
 
     fn parse_long_array(i: &[u8]) -> nom::IResult<&[u8], Vec<i64>, ()> {
         let (mut i, length) = nom::number::streaming::be_i32(i)?;
-        dbg!(i, length);
 
         let mut result = Vec::with_capacity(length as usize);
         for _ in 0..length {

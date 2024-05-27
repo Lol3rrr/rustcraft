@@ -7,6 +7,9 @@ pub use pstring::PString;
 mod position;
 pub use position::Position;
 
+mod bitset;
+pub use bitset::BitSet;
+
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     WrongPacketId { expected: i32, received: i32 },
