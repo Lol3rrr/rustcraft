@@ -270,7 +270,15 @@ where
                         return;
                     }
                 };
-                tracing::info!("[CLIENT] 0x{:02x} - Size: {:?}", packet.id.0, packet.data.len());
+
+                match protocol::play::server::Play::parse(packet.id, &packet.data) {
+                    Ok((_, packet)) => {
+                        // tracing::info!("[SERVER] {:#?}", packet);
+                    }
+                    Err(e) => {
+                        tracing::error!("[CLIENT] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
+                    }
+                };
 
                 if let Err(e) = target.send_rawpacket(&packet).await {
                     tracing::error!("Forwaring to server: {:?}", e);

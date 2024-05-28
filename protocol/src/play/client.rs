@@ -24,6 +24,7 @@ pub enum Play {
     UpdateSectionBlocks(UpdateSectionBlocks),
     SetEntityMetadata(SetEntityMetadata),
     SetEntityVelocity(SetEntityVelocity),
+    SetEquipment(SetEquipment),
     UpdateTime(UpdateTime),
     SoundEffect(SoundEffect),
     TeleportEntity(TeleportEntity),
@@ -65,6 +66,9 @@ impl Play {
             ))),
             0x0c => ChunkBatchFinished::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchFinished(v))),
             0x0d => ChunkBatchStart::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchStart(v))),
+            0x11 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "Commands",
+            ))),
             0x1a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "Damage Event",
             ))),
@@ -114,23 +118,45 @@ impl Play {
             0x30 => {
                 UpdateEntityRotation::parse(id, i).map(|(i, v)| (i, Self::UpdateEntityRotation(v)))
             }
+            0x38 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "PlayerAbilities",
+            ))),
+            0x3e => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("PlayerInfoUpdate"))),
+            0x40 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("SynchronizePlayerPosition"))),
+            0x41 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("UpdateRecipeBook"))),
             0x42 => RemoveEntities::parse(id, i).map(|(i, v)| (i, Self::RemoveEntities(v))),
             0x48 => SetHeadRotation::parse(id, i).map(|(i, v)| (i, Self::SetHeadRotation(v))),
             0x49 => {
                 UpdateSectionBlocks::parse(id, i).map(|(i, v)| (i, Self::UpdateSectionBlocks(v)))
             }
+            0x4b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "ServerData",
+            ))),
+            0x53 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "SetHeldItem",
+            ))),
             0x54 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "SetCenterChunk",
             ))),
+            0x56 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "SetDefaultSpawnPosition",
+            ))),
             0x58 => SetEntityMetadata::parse(id, i).map(|(i, v)| (i, Self::SetEntityMetadata(v))),
             0x5a => SetEntityVelocity::parse(id, i).map(|(i, v)| (i, Self::SetEntityVelocity(v))),
-            0x5b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetEquipment",
-            ))),
+            0x5b => SetEquipment::parse(id, i).map(|(i, v)| (i, Self::SetEquipment(v))),
             0x64 => UpdateTime::parse(id, i).map(|(i, v)| (i, Self::UpdateTime(v))),
             0x68 => SoundEffect::parse(id, i).map(|(i, v)| (i, Self::SoundEffect(v))),
             0x70 => TeleportEntity::parse(id, i).map(|(i, v)| (i, Self::TeleportEntity(v))),
+            0x71 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "SetTickingState",
+            ))),
+            0x72 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "StepTick",
+            ))),
             0x75 => UpdateAttributes::parse(id, i).map(|(i, v)| (i, Self::UpdateAttributes(v))),
+            0x77 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "UpdateRecipes",
+            ))),
             other => Err(nom::Err::Error(crate::general::ParseError::Other)),
         }
     }
@@ -234,6 +260,7 @@ declare_packet!(
     (velocity_y, i16),
     (velocity_z, i16)
 );
+declare_packet!(SetEquipment, 0x5b, false, (entity_id, VarInt));
 
 #[derive(Debug, PartialEq)]
 pub struct Login {
