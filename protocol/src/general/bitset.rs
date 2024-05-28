@@ -8,8 +8,11 @@ impl crate::serialize::SerializeItem for BitSet {
         self.parts.slen()
     }
 
-    fn serialize<'b>(&self, mut buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-        buffer = self.parts.serialize(buffer)?; 
+    fn serialize<'b>(
+        &self,
+        mut buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        buffer = self.parts.serialize(buffer)?;
 
         Ok(buffer)
     }
@@ -22,8 +25,6 @@ impl crate::serialize::SerializeItem for BitSet {
 
 impl BitSet {
     pub fn new() -> Self {
-        Self {
-            parts: Vec::new(),
-        }
+        Self { parts: Vec::new() }
     }
 }

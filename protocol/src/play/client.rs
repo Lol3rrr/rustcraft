@@ -1,6 +1,6 @@
 use crate::{
     declare_packet,
-    general::{PString, Position, VarInt, BitSet},
+    general::{BitSet, PString, Position, VarInt},
     serialize::SerializeItem,
 };
 
@@ -63,7 +63,9 @@ impl Play {
             ))),
             0x0c => ChunkBatchFinished::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchFinished(v))),
             0x0d => ChunkBatchStart::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchStart(v))),
-            0x1a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("Damage Event"))),
+            0x1a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                "Damage Event",
+            ))),
             0x1f => EntityEvent::parse(id, i).map(|(i, v)| (i, Self::EntityEvent(v))),
             0x20 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "Explosion",
@@ -84,7 +86,8 @@ impl Play {
             0x26 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "ClientBound-KeepAlive",
             ))),
-            0x27 => ChunkDataAndUpdateLight::parse(id, i).map(|(i, v)| (i, Self::ChunkDataAndUpdateLight(v))),
+            0x27 => ChunkDataAndUpdateLight::parse(id, i)
+                .map(|(i, v)| (i, Self::ChunkDataAndUpdateLight(v))),
             0x28 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "WorldEvent",
             ))),
@@ -333,7 +336,10 @@ impl SerializeItem for BlockEntity {
         todo!()
     }
 
-    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         todo!()
     }
 
@@ -342,15 +348,19 @@ impl SerializeItem for BlockEntity {
         let (i, y) = nom::number::streaming::be_i16(i)?;
         let (i, ty) = VarInt::parse(i)?;
 
-        let (i, (n_name, data)) = nbt::Tag::parse(false, true)(i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+        let (i, (n_name, data)) = nbt::Tag::parse(false, true)(i)
+            .map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
 
-        Ok((i, Self {
-            x: packed_xz >> 4,
-            z: packed_xz & 0x0f,
-            y,
-            ty,
-            data,
-        }))
+        Ok((
+            i,
+            Self {
+                x: packed_xz >> 4,
+                z: packed_xz & 0x0f,
+                y,
+                ty,
+                data,
+            },
+        ))
     }
 }
 
@@ -362,24 +372,28 @@ impl SerializeItem for HeightMap {
         todo!()
     }
 
-    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         todo!()
     }
 
     fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
-        let (i, (_, value)) = nbt::Tag::parse(false, true)(i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+        let (i, (_, value)) = nbt::Tag::parse(false, true)(i)
+            .map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
         Ok((i, Self(value)))
     }
 }
 
 declare_packet!(
-    ChunkDataAndUpdateLight, 
-    0x27, 
-    false, 
-    (chunk_x, i32), 
-    (chunk_z, i32), 
-    (height_maps, HeightMap), 
-    (data, Vec<i8>), 
+    ChunkDataAndUpdateLight,
+    0x27,
+    false,
+    (chunk_x, i32),
+    (chunk_z, i32),
+    (height_maps, HeightMap),
+    (data, Vec<i8>),
     (block_entities, Vec<BlockEntity>),
     (sky_light_mask, BitSet),
     (block_light_mask, BitSet),
@@ -389,11 +403,11 @@ declare_packet!(
 );
 
 declare_packet!(
-    UpdateLight, 
-    0x2a, 
-    false, 
-    (chunk_x, VarInt), 
-    (chunk_z, VarInt), 
+    UpdateLight,
+    0x2a,
+    false,
+    (chunk_x, VarInt),
+    (chunk_z, VarInt),
     (sky_light_mask, BitSet),
     (block_light_mask, BitSet),
     (empty_sky_light_mask, BitSet),
@@ -403,7 +417,7 @@ declare_packet!(
 
 #[derive(Debug, PartialEq)]
 pub enum SoundID {
-    Id (VarInt),
+    Id(VarInt),
     NamedId {
         name: PString<'static>,
         fixed_range: Option<f32>,
@@ -420,11 +434,12 @@ impl SerializeItem for SoundID {
         }
     }
 
-    fn serialize<'b>(&self, mut buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+    fn serialize<'b>(
+        &self,
+        mut buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         match self {
-            Self::Id(v) => { 
-                VarInt(v.0 + 1).serialize(buffer)
-            }
+            Self::Id(v) => VarInt(v.0 + 1).serialize(buffer),
             Self::NamedId { name, fixed_range } => {
                 buffer = VarInt(0).serialize(buffer)?;
                 buffer = name.serialize(buffer)?;
@@ -433,7 +448,7 @@ impl SerializeItem for SoundID {
             }
         }
     }
-    
+
     fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
         let (i, id) = VarInt::parse(i)?;
 
@@ -441,14 +456,23 @@ impl SerializeItem for SoundID {
             let (i, name) = PString::parse(i)?;
             let (i, fixed_range) = Option::<f32>::parse(i)?;
 
-            Ok((i, Self::NamedId {
-                name,
-                fixed_range,
-            }))
+            Ok((i, Self::NamedId { name, fixed_range }))
         } else {
             Ok((i, Self::Id(VarInt(id.0 - 1))))
         }
     }
 }
 
-declare_packet!(SoundEffect, 0x68, false, (id, SoundID), (sound_category, VarInt), (effect_position_x, i32), (effect_position_y, i32), (effect_position_z, i32), (volume, f32), (pitch, f32), (seed, i64));
+declare_packet!(
+    SoundEffect,
+    0x68,
+    false,
+    (id, SoundID),
+    (sound_category, VarInt),
+    (effect_position_x, i32),
+    (effect_position_y, i32),
+    (effect_position_z, i32),
+    (volume, f32),
+    (pitch, f32),
+    (seed, i64)
+);
