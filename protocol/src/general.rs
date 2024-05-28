@@ -1,6 +1,9 @@
 mod varint;
 pub use varint::VarInt;
 
+mod varlong;
+pub use varlong::VarLong;
+
 mod pstring;
 pub use pstring::PString;
 

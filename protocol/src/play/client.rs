@@ -1,6 +1,6 @@
 use crate::{
     declare_packet,
-    general::{BitSet, PString, Position, VarInt},
+    general::{BitSet, PString, Position, VarInt, VarLong},
     serialize::SerializeItem,
 };
 
@@ -21,11 +21,13 @@ pub enum Play {
     UpdateEntityRotation(UpdateEntityRotation),
     RemoveEntities(RemoveEntities),
     SetHeadRotation(SetHeadRotation),
+    UpdateSectionBlocks(UpdateSectionBlocks),
     SetEntityMetadata(SetEntityMetadata),
     SetEntityVelocity(SetEntityVelocity),
     UpdateTime(UpdateTime),
     SoundEffect(SoundEffect),
     TeleportEntity(TeleportEntity),
+    UpdateAttributes(UpdateAttributes),
 }
 
 impl Play {
@@ -114,9 +116,9 @@ impl Play {
             }
             0x42 => RemoveEntities::parse(id, i).map(|(i, v)| (i, Self::RemoveEntities(v))),
             0x48 => SetHeadRotation::parse(id, i).map(|(i, v)| (i, Self::SetHeadRotation(v))),
-            0x49 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "UpdateSectionBlocks",
-            ))),
+            0x49 => {
+                UpdateSectionBlocks::parse(id, i).map(|(i, v)| (i, Self::UpdateSectionBlocks(v)))
+            }
             0x54 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                 "SetCenterChunk",
             ))),
@@ -128,9 +130,7 @@ impl Play {
             0x64 => UpdateTime::parse(id, i).map(|(i, v)| (i, Self::UpdateTime(v))),
             0x68 => SoundEffect::parse(id, i).map(|(i, v)| (i, Self::SoundEffect(v))),
             0x70 => TeleportEntity::parse(id, i).map(|(i, v)| (i, Self::TeleportEntity(v))),
-            0x75 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "UpdateAttributes",
-            ))),
+            0x75 => UpdateAttributes::parse(id, i).map(|(i, v)| (i, Self::UpdateAttributes(v))),
             other => Err(nom::Err::Error(crate::general::ParseError::Other)),
         }
     }
@@ -210,6 +210,13 @@ declare_packet!(
     false,
     (entity_id, VarInt),
     (angle, u8)
+);
+declare_packet!(
+    UpdateSectionBlocks,
+    0x49,
+    false,
+    (chunk_section_position, i64),
+    (blocks, Vec<VarLong>)
 );
 declare_packet!(
     SetEntityMetadata,
@@ -475,4 +482,50 @@ declare_packet!(
     (volume, f32),
     (pitch, f32),
     (seed, i64)
+);
+
+#[derive(Debug, PartialEq)]
+pub struct AttributeModifier {
+    pub id: u128,
+    pub amount: f64,
+    pub operation: i8,
+}
+
+impl SerializeItem for AttributeModifier {
+    fn slen(&self) -> usize {
+        self.id.slen() + self.amount.slen() + self.operation.slen()
+    }
+
+    fn serialize<'b>(
+        &self,
+        mut buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        buffer = self.id.serialize(buffer)?;
+        buffer = self.amount.serialize(buffer)?;
+        buffer = self.operation.serialize(buffer)?;
+        Ok(buffer)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, id) = u128::parse(i)?;
+        let (i, amount) = f64::parse(i)?;
+        let (i, operation) = i8::parse(i)?;
+
+        Ok((
+            i,
+            Self {
+                id,
+                amount,
+                operation,
+            },
+        ))
+    }
+}
+
+declare_packet!(
+    UpdateAttributes,
+    0x75,
+    false,
+    (entity_id, VarInt),
+    (properties, Vec<(VarInt, f64, Vec<AttributeModifier>)>)
 );

@@ -256,3 +256,29 @@ where
         Ok((i, (v1, v2)))
     }
 }
+
+impl<T1, T2, T3> SerializeItem for (T1, T2, T3)
+where
+    T1: SerializeItem,
+    T2: SerializeItem,
+    T3: SerializeItem,
+{
+    fn slen(&self) -> usize {
+        self.0.slen() + self.1.slen() + self.2.slen()
+    }
+
+    fn serialize<'b>(&self, mut buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        buf = self.0.serialize(buf)?;
+        buf = self.1.serialize(buf)?;
+        buf = self.2.serialize(buf)?;
+        Ok(buf)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, v1) = T1::parse(i)?;
+        let (i, v2) = T2::parse(i)?;
+        let (i, v3) = T3::parse(i)?;
+
+        Ok((i, (v1, v2, v3)))
+    }
+}
