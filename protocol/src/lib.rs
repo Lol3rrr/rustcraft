@@ -26,16 +26,13 @@ macro_rules! declare_packet {
             const PACKETTRAIL: bool = $ptrail;
 
             fn length(&self) -> usize {
-                use crate::serialize::SerializeItem;
-
                 0
-                $(+ self.$field.slen() )*
+                $(+ crate::serialize::SerializeItem::slen(&self.$field) )*
             }
 
-            fn serialize<'b>(&self, mut buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-                use crate::serialize::SerializeItem;
+            fn serialize<'b>(&self, buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
                 $(
-                    buffer = self.$field.serialize(buffer)?;
+                    let buffer = crate::serialize::SerializeItem::serialize(&self.$field, buffer)?;
                 )*
 
                 Ok(buffer)
@@ -51,9 +48,8 @@ macro_rules! declare_packet {
         }));
                 }
 
-                use crate::serialize::SerializeItem;
                 $(
-                    let (i, $field) = <$field_ty>::parse(i)?;
+                    let (i, $field) = <$field_ty as crate::serialize::SerializeItem>::parse(i)?;
                 )*
 
                 Ok((i, Self {
@@ -66,3 +62,29 @@ macro_rules! declare_packet {
     }
 }
 pub(crate) use declare_packet;
+
+macro_rules! combined_packet {
+    ($name:ident, $($parts:ident),*) => {
+        #[derive(Debug, PartialEq)]
+        pub enum $name {
+            $(
+                $parts($parts),
+            )*
+        }
+
+        impl $name {
+            pub fn parse(id: crate::general::VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+                use crate::packet::PacketContent;
+                match id.0 {
+                    $(
+                    $parts::ID => $parts::parse(id, i).map(|(i, v)| (i, Self::$parts(v))),
+                    )*
+                    other => {
+                        Err(nom::Err::Error(crate::general::ParseError::UnknownPacketId(other)))
+                    }
+                }
+            }
+        }
+    }
+}
+pub(crate) use combined_packet;

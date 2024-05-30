@@ -1,166 +1,61 @@
 use crate::{
-    declare_packet,
+    combined_packet, declare_packet,
     general::{BitSet, PString, Position, VarInt, VarLong},
     serialize::SerializeItem,
 };
 
-#[derive(Debug, PartialEq)]
-pub enum Play {
-    BundleDelimiter(BundleDelimiter),
-    SpawnEntity(SpawnEntity),
-    BlockUpdate(BlockUpdate),
-    ChunkBatchFinished(ChunkBatchFinished),
-    ChunkBatchStart(ChunkBatchStart),
-    EntityEvent(EntityEvent),
-    UnloadChunk(UnloadChunk),
-    ChunkDataAndUpdateLight(ChunkDataAndUpdateLight),
-    UpdateLight(UpdateLight),
-    Login(Login),
-    UpdateEntityPosition(UpdateEntityPosition),
-    UpdateEntityPositionAndRotation(UpdateEntityPositionAndRotation),
-    UpdateEntityRotation(UpdateEntityRotation),
-    RemoveEntities(RemoveEntities),
-    SetHeadRotation(SetHeadRotation),
-    UpdateSectionBlocks(UpdateSectionBlocks),
-    SetEntityMetadata(SetEntityMetadata),
-    SetEntityVelocity(SetEntityVelocity),
-    SetEquipment(SetEquipment),
-    UpdateTime(UpdateTime),
-    SoundEffect(SoundEffect),
-    TeleportEntity(TeleportEntity),
-    UpdateAttributes(UpdateAttributes),
-}
-
-impl Play {
-    pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
-        match id.0 {
-            0x00 => BundleDelimiter::parse(id, i).map(|(i, v)| (i, Self::BundleDelimiter(v))),
-            0x01 => SpawnEntity::parse(id, i).map(|(i, v)| (i, Self::SpawnEntity(v))),
-            0x02 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SpawnExperienceOrb",
-            ))),
-            0x03 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "EntityAnimation",
-            ))),
-            0x04 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "AwardStatistics",
-            ))),
-            0x05 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "AcknowledgeBlockChange",
-            ))),
-            0x06 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetBlockDestroyStage",
-            ))),
-            0x07 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "BlockEntityData",
-            ))),
-            0x08 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "BlockAction",
-            ))),
-            0x09 => BlockUpdate::parse(id, i).map(|(i, v)| (i, Self::BlockUpdate(v))),
-            0x0a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "BossBar",
-            ))),
-            0x0b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "ChangeDifficulty",
-            ))),
-            0x0c => ChunkBatchFinished::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchFinished(v))),
-            0x0d => ChunkBatchStart::parse(id, i).map(|(i, v)| (i, Self::ChunkBatchStart(v))),
-            0x11 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Commands",
-            ))),
-            0x1a => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Damage Event",
-            ))),
-            0x1f => EntityEvent::parse(id, i).map(|(i, v)| (i, Self::EntityEvent(v))),
-            0x20 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Explosion",
-            ))),
-            0x21 => UnloadChunk::parse(id, i).map(|(i, v)| (i, Self::UnloadChunk(v))),
-            0x22 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "GameEvent",
-            ))),
-            0x23 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "OpenHorseScreen",
-            ))),
-            0x24 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "HurtAnimation",
-            ))),
-            0x25 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "InitializeWorldBorder",
-            ))),
-            0x26 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "ClientBound-KeepAlive",
-            ))),
-            0x27 => ChunkDataAndUpdateLight::parse(id, i)
-                .map(|(i, v)| (i, Self::ChunkDataAndUpdateLight(v))),
-            0x28 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "WorldEvent",
-            ))),
-            0x29 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Particle",
-            ))),
-            0x2a => UpdateLight::parse(id, i).map(|(i, v)| (i, Self::UpdateLight(v))),
-            0x2b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "Login",
-            ))),
-            0x2c => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "MapData",
-            ))),
-            0x2d => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "MerchantOffers",
-            ))),
-            0x2e => {
-                UpdateEntityPosition::parse(id, i).map(|(i, v)| (i, Self::UpdateEntityPosition(v)))
-            }
-            0x2f => UpdateEntityPositionAndRotation::parse(id, i)
-                .map(|(i, v)| (i, Self::UpdateEntityPositionAndRotation(v))),
-            0x30 => {
-                UpdateEntityRotation::parse(id, i).map(|(i, v)| (i, Self::UpdateEntityRotation(v)))
-            }
-            0x38 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "PlayerAbilities",
-            ))),
-            0x3e => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("PlayerInfoUpdate"))),
-            0x40 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("SynchronizePlayerPosition"))),
-            0x41 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented("UpdateRecipeBook"))),
-            0x42 => RemoveEntities::parse(id, i).map(|(i, v)| (i, Self::RemoveEntities(v))),
-            0x48 => SetHeadRotation::parse(id, i).map(|(i, v)| (i, Self::SetHeadRotation(v))),
-            0x49 => {
-                UpdateSectionBlocks::parse(id, i).map(|(i, v)| (i, Self::UpdateSectionBlocks(v)))
-            }
-            0x4b => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "ServerData",
-            ))),
-            0x53 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetHeldItem",
-            ))),
-            0x54 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetCenterChunk",
-            ))),
-            0x56 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetDefaultSpawnPosition",
-            ))),
-            0x58 => SetEntityMetadata::parse(id, i).map(|(i, v)| (i, Self::SetEntityMetadata(v))),
-            0x5a => SetEntityVelocity::parse(id, i).map(|(i, v)| (i, Self::SetEntityVelocity(v))),
-            0x5b => SetEquipment::parse(id, i).map(|(i, v)| (i, Self::SetEquipment(v))),
-            0x64 => UpdateTime::parse(id, i).map(|(i, v)| (i, Self::UpdateTime(v))),
-            0x68 => SoundEffect::parse(id, i).map(|(i, v)| (i, Self::SoundEffect(v))),
-            0x70 => TeleportEntity::parse(id, i).map(|(i, v)| (i, Self::TeleportEntity(v))),
-            0x71 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "SetTickingState",
-            ))),
-            0x72 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "StepTick",
-            ))),
-            0x75 => UpdateAttributes::parse(id, i).map(|(i, v)| (i, Self::UpdateAttributes(v))),
-            0x77 => Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                "UpdateRecipes",
-            ))),
-            other => Err(nom::Err::Error(crate::general::ParseError::Other)),
-        }
-    }
-}
+combined_packet!(
+    Play,
+    BundleDelimiter,
+    SpawnEntity,
+    AckBlockChange,
+    BlockUpdate,
+    ChangeDifficulty,
+    ChunkBatchFinished,
+    ChunkBatchStart,
+    Commands,
+    SetContainerContent,
+    SetContainerSlot,
+    DamageEvent,
+    EntityEvent,
+    UnloadChunk,
+    GameEvent,
+    HurtAnimation,
+    InitializeWorldBorder,
+    KeepAlive,
+    ChunkDataAndUpdateLight,
+    WorldEvent,
+    Particle,
+    UpdateLight,
+    UpdateEntityPosition,
+    UpdateEntityPositionAndRotation,
+    UpdateEntityRotation,
+    PlayerAbilities,
+    PlayerInfoUpdate,
+    SynchronizePlayerPosition,
+    UpdateRecipeBook,
+    RemoveEntities,
+    SetHeadRotation,
+    UpdateSectionBlocks,
+    ServerData,
+    SetHeldItem,
+    SetCenterChunk,
+    SetDefaultSpawnPosition,
+    SetEntityMetadata,
+    SetEntityVelocity,
+    SetEquipment,
+    SetExperience,
+    SetHealth,
+    UpdateTime,
+    SoundEffect,
+    TeleportEntity,
+    PickupItem,
+    SetTickingState,
+    StepTick,
+    UpdateAdvancements,
+    UpdateAttributes,
+    UpdateRecipes
+);
 
 declare_packet!(BundleDelimiter, 0x00, false,);
 declare_packet!(
@@ -181,6 +76,7 @@ declare_packet!(
     (velocity_y, i16),
     (velocity_z, i16)
 );
+declare_packet!(AckBlockChange, 0x05, false, (sequence_id, VarInt));
 declare_packet!(
     BlockUpdate,
     0x09,
@@ -188,8 +84,36 @@ declare_packet!(
     (location, Position),
     (block_id, VarInt)
 );
+declare_packet!(
+    ChangeDifficulty,
+    0x0b,
+    false,
+    (difficulty, u8),
+    (locked, bool)
+);
 declare_packet!(ChunkBatchFinished, 0x0c, false, (size, VarInt));
 declare_packet!(ChunkBatchStart, 0x0d, false,);
+declare_packet!(Commands, 0x11, false,); // TODO
+declare_packet!(SetContainerContent, 0x13, false,); // TODO
+declare_packet!(
+    SetContainerSlot,
+    0x15,
+    false,
+    (window_id, i8),
+    (state_id, VarInt),
+    (slot, i16),
+    (slot_data, crate::general::Slot)
+);
+declare_packet!(
+    DamageEvent,
+    0x1a,
+    false,
+    (entity_id, VarInt),
+    (source_type_id, VarInt),
+    (source_cause_id, VarInt),
+    (source_direct_id, VarInt),
+    (source_position, Option<(f64, f64, f64)>)
+);
 declare_packet!(
     EntityEvent,
     0x1f,
@@ -198,6 +122,12 @@ declare_packet!(
     (entity_status, i8)
 );
 declare_packet!(UnloadChunk, 0x21, false, (chunk_z, i32), (chunk_x, i32));
+declare_packet!(GameEvent, 0x22, false,); // TODO
+declare_packet!(HurtAnimation, 0x24, false, (entity_id, VarInt), (yaw, f32));
+declare_packet!(InitializeWorldBorder, 0x25, false,); // TODO
+declare_packet!(KeepAlive, 0x26, false,); // TODO
+declare_packet!(WorldEvent, 0x28, false,); // TODO
+declare_packet!(Particle, 0x29, false,); // TODO
 declare_packet!(
     UpdateEntityPosition,
     0x2e,
@@ -229,6 +159,17 @@ declare_packet!(
     (pitch, u8),
     (on_ground, bool)
 );
+declare_packet!(
+    PlayerAbilities,
+    0x38,
+    false,
+    (flags, i8),
+    (flying_speed, f32),
+    (fov_modifier, f32)
+);
+declare_packet!(PlayerInfoUpdate, 0x3e, false,); // TODO
+declare_packet!(SynchronizePlayerPosition, 0x40, false,); // TODO
+declare_packet!(UpdateRecipeBook, 0x41, false,); // TODO
 declare_packet!(RemoveEntities, 0x42, false, (entity_ids, Vec<VarInt>));
 declare_packet!(
     SetHeadRotation,
@@ -244,6 +185,10 @@ declare_packet!(
     (chunk_section_position, i64),
     (blocks, Vec<VarLong>)
 );
+declare_packet!(ServerData, 0x4b, false,); // TODO
+declare_packet!(SetHeldItem, 0x53, false, (slot, i8));
+declare_packet!(SetCenterChunk, 0x54, false,); // TODO
+declare_packet!(SetDefaultSpawnPosition, 0x56, false,); // TODO
 declare_packet!(
     SetEntityMetadata,
     0x58,
@@ -260,7 +205,53 @@ declare_packet!(
     (velocity_y, i16),
     (velocity_z, i16)
 );
-declare_packet!(SetEquipment, 0x5b, false, (entity_id, VarInt));
+declare_packet!(
+    SetEquipment,
+    0x5b,
+    false,
+    (entity_id, VarInt),
+    (equipment, Equipment)
+);
+declare_packet!(SetExperience, 0x5c, false,); // TODO
+declare_packet!(SetHealth, 0x5d, false,); // TODO
+
+#[derive(Debug, PartialEq)]
+pub struct Equipment {
+    pub slots: Vec<(i8, crate::general::Slot)>,
+}
+
+impl crate::serialize::SerializeItem for Equipment {
+    fn slen(&self) -> usize {
+        todo!()
+    }
+
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let mut slots = Vec::new();
+
+        let mut i = i;
+        loop {
+            let (n_i, slot) = i8::parse(i)?;
+            let (n_i, data) = crate::general::Slot::parse(n_i)?;
+
+            slots.push((slot & (0x80_u8 as i8), data));
+
+            i = n_i;
+
+            if (slot as u8) & 0x80 == 0 {
+                break;
+            }
+        }
+
+        Ok((i, Self { slots }))
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Login {
@@ -549,6 +540,10 @@ impl SerializeItem for AttributeModifier {
     }
 }
 
+declare_packet!(PickupItem, 0x6f, false,); // TODO
+declare_packet!(SetTickingState, 0x71, false,); // TODO
+declare_packet!(StepTick, 0x72, false,); // TODO
+declare_packet!(UpdateAdvancements, 0x74, false,); // TODO
 declare_packet!(
     UpdateAttributes,
     0x75,
@@ -556,3 +551,41 @@ declare_packet!(
     (entity_id, VarInt),
     (properties, Vec<(VarInt, f64, Vec<AttributeModifier>)>)
 );
+declare_packet!(UpdateRecipes, 0x77, false,); // TODO
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! test_packet_impled {
+        ($test_name:ident, $id:literal) => {
+            #[test]
+            fn $test_name() {
+                let result = Play::parse(VarInt($id), &[]);
+                match result {
+                    Err(nom::Err::Error(crate::general::ParseError::UnknownPacketId(_))) => {
+                        panic!("Packet is not implemented");
+                    }
+                    _ => {}
+                };
+            }
+        };
+    }
+
+    test_packet_impled!(id_0x13, 0x13);
+    test_packet_impled!(id_0x15, 0x15);
+    test_packet_impled!(id_0x22, 0x22);
+    test_packet_impled!(id_0x25, 0x25);
+    test_packet_impled!(id_0x26, 0x26);
+    test_packet_impled!(id_0x28, 0x28);
+    test_packet_impled!(id_0x29, 0x29);
+    test_packet_impled!(id_0x3e, 0x3e);
+    test_packet_impled!(id_0x54, 0x54);
+    test_packet_impled!(id_0x56, 0x56);
+    test_packet_impled!(id_0x58, 0x58);
+    test_packet_impled!(id_0x5c, 0x5c);
+    test_packet_impled!(id_0x5d, 0x5d);
+    test_packet_impled!(id_0x6f, 0x6f);
+    test_packet_impled!(id_0x71, 0x71);
+    test_packet_impled!(id_0x72, 0x72);
+}

@@ -1,5 +1,5 @@
 use crate::{
-    general::{PString, Position, VarInt},
+    general::{PString, Position, Slot, VarInt, VarLong},
     serialize::SerializeItem,
 };
 
@@ -13,6 +13,42 @@ pub struct EntityMetadata {
 pub struct EntityMetadataEntry {
     pub index: u8,
     pub ty: i32,
+    pub value: EntityMetadataValue,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum EntityMetadataValue {
+    Byte(i8),
+    VarInt(VarInt),
+    VarLong(VarLong),
+    Float(f32),
+    String(PString<'static>),
+    TextComponent,
+    OptionalTextComponent,
+    Slot(Slot),
+    Boolean(bool),
+    Rotations,
+    Position(Position),
+    OptionalPosition,
+    Direction,
+    OptionalUUID(Option<u128>),
+    BlockState(VarInt),
+    OptionalBlockState(Option<VarInt>),
+    NBT(nbt::Tag),
+    Particle,
+    Particles,
+    VillagerData,
+    OptionalVarInt(Option<VarInt>),
+    Pose(VarInt),
+    CatVariant(VarInt),
+    WolfVariant(VarInt),
+    FrogVariant(VarInt),
+    OptionalGlobalPosition,
+    PaintingVariant(VarInt),
+    SnifferState(VarInt),
+    ArmadilloState(VarInt),
+    Vector3(f32, f32, f32),
+    Quaternion(f32, f32, f32, f32),
 }
 
 impl crate::serialize::SerializeItem for EntityMetadata {
@@ -43,28 +79,23 @@ impl crate::serialize::SerializeItem for EntityMetadata {
             let (n_i, value) = match raw_type.0 {
                 0 => {
                     let (i, v) = i8::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::Byte(v))
                 }
                 1 => {
                     let (i, v) = VarInt::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::VarInt(v))
                 }
                 2 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing VarLong EntityMetadata",
-                    )))
+                    let (i, v) = VarLong::parse(n_i)?;
+                    (i, EntityMetadataValue::VarLong(v))
                 }
                 3 => {
                     let (i, v) = f32::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::Float(v))
                 }
                 4 => {
                     let (i, v) = PString::<'static>::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::String(v))
                 }
                 5 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
@@ -77,14 +108,12 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                     )))
                 }
                 7 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Slot EntityMetadata",
-                    )))
+                    let (i, v) = crate::general::Slot::parse(n_i)?;
+                    (i, EntityMetadataValue::Slot(v))
                 }
                 8 => {
                     let (i, v) = bool::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::Boolean(v))
                 }
                 9 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
@@ -93,8 +122,7 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                 }
                 10 => {
                     let (i, v) = Position::parse(n_i)?;
-                    dbg!(v);
-                    (i, ())
+                    (i, EntityMetadataValue::Position(v))
                 }
                 11 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
@@ -147,24 +175,20 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                     )))
                 }
                 21 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Pose EntityMetadata",
-                    )))
+                    let (i, pose_id) = VarInt::parse(n_i)?;
+                    (i, EntityMetadataValue::Pose(pose_id))
                 }
                 22 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Cat Variant EntityMetadata",
-                    )))
+                    let (i, cat_id) = VarInt::parse(n_i)?;
+                    (i, EntityMetadataValue::CatVariant(cat_id))
                 }
                 23 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Wolf Variant EntityMetadata",
-                    )))
+                    let (i, wolf_id) = VarInt::parse(n_i)?;
+                    (i, EntityMetadataValue::WolfVariant(wolf_id))
                 }
                 24 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Frog Variant EntityMetadata",
-                    )))
+                    let (i, frog_id) = VarInt::parse(n_i)?;
+                    (i, EntityMetadataValue::FrogVariant(frog_id))
                 }
                 25 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
@@ -208,6 +232,7 @@ impl crate::serialize::SerializeItem for EntityMetadata {
             parts.push(EntityMetadataEntry {
                 index,
                 ty: raw_type.0,
+                value,
             });
 
             i = n_i;

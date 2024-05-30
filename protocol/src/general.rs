@@ -13,9 +13,13 @@ pub use position::Position;
 mod bitset;
 pub use bitset::BitSet;
 
+mod slot;
+pub use slot::Slot;
+
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     WrongPacketId { expected: i32, received: i32 },
+    UnknownPacketId(i32),
     NegativeLength,
     ParseString,
     RemainingDataAfterParsing { packet_id: VarInt },

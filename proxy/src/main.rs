@@ -272,9 +272,12 @@ where
                 };
 
                 match protocol::play::server::Play::parse(packet.id, &packet.data) {
-                    Ok((_, packet)) => {
+                    Ok((rem, packet)) if rem.is_empty() => {
                         // tracing::info!("[SERVER] {:#?}", packet);
                     }
+                    Ok((rem, packet)) => {
+                        // tracing::error!("[CLIENT] {:?} Unparsed data: {:?}", packet, rem);
+                }
                     Err(e) => {
                         tracing::error!("[CLIENT] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
                     }
@@ -295,8 +298,11 @@ where
                 };
 
                 match protocol::play::client::Play::parse(packet.id, &packet.data) {
-                    Ok((_, packet)) => {
+                    Ok((rem, packet)) if rem.is_empty() => {
                         // tracing::info!("[SERVER] {:#?}", packet);
+                    }
+                    Ok((rem, _packet)) => {
+                        // tracing::error!("[SERVER] 0x{:02x} - Unparsed Data: {:?}", packet.id.0, rem.len());
                     }
                     Err(e) => {
                         tracing::error!("[SERVER] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
