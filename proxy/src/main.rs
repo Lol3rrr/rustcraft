@@ -276,8 +276,8 @@ where
                         // tracing::info!("[SERVER] {:#?}", packet);
                     }
                     Ok((rem, packet)) => {
-                        // tracing::error!("[CLIENT] {:?} Unparsed data: {:?}", packet, rem);
-                }
+                        tracing::error!("[CLIENT] {:?} Unparsed data: {:?}", packet, rem);
+                    }
                     Err(e) => {
                         tracing::error!("[CLIENT] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
                     }
@@ -297,12 +297,29 @@ where
                     }
                 };
 
+                use protocol::packet::PacketContent;
+
+                let id = packet.id;
+                let data = &packet.data;
                 match protocol::play::client::Play::parse(packet.id, &packet.data) {
                     Ok((rem, packet)) if rem.is_empty() => {
-                        // tracing::info!("[SERVER] {:#?}", packet);
+                        match packet {
+                            protocol::play::client::Play::Login(p) => {
+                                tracing::info!("Login Packet: {:?}", p);
+                                let mut tmp = vec![0; 1024];
+                                let serialized = p.serialize(&mut tmp).unwrap();
+
+                                let (_, tmp) = protocol::play::client::Play::parse(id, &tmp).unwrap();
+                                assert_eq!(protocol::play::client::Play::Login(p), tmp);
+                                // assert_eq!(data, serialized);
+                            }
+                            other => {
+                                // tracing::info!("[SERVER] {:#?}", packet);
+                            }
+                        };
                     }
                     Ok((rem, _packet)) => {
-                        // tracing::error!("[SERVER] 0x{:02x} - Unparsed Data: {:?}", packet.id.0, rem.len());
+                        tracing::error!("[SERVER] 0x{:02x} - Unparsed Data: {:?}", packet.id.0, rem.len());
                     }
                     Err(e) => {
                         tracing::error!("[SERVER] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);

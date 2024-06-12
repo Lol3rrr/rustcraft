@@ -270,6 +270,13 @@ where
 {
     tracing::info!("Entering Configuration State of the connection");
 
+    /*
+    connection.send_packet(&protocol::packet::Packet { inner: protocol::configuration::client::RegistryData {
+        id: protocol::general::PString("minecraft:dimension_type".into()),
+        entries: vec![],
+    } }).await.unwrap();
+    */
+
     loop {
         let packet = match connection
             .recv_packet(protocol::configuration::server::ConfigurationMessage::parse)
@@ -309,24 +316,25 @@ where
 {
     let login = protocol::packet::Packet {
         inner: protocol::play::client::Login {
-            entity_id: 0,
+            entity_id: 123,
             is_hardcore: false,
-            dimensions: Vec::new(),
+            dimensions: vec![protocol::general::PString("minecraft:overworld".into())],
             max_players: protocol::general::VarInt(69),
             view_distance: protocol::general::VarInt(4),
             simulation_distance: protocol::general::VarInt(4),
             reduced_debug_info: false,
             enable_respawn_rule: true,
             do_limited_crafting: false,
-            dimension_type: protocol::general::VarInt(0),
-            dimension_name: protocol::general::PString("overworld".into()),
-            hashed_seed: 0,
-            game_mode: 1,
+            dimension_type: protocol::general::PString("".into()),
+            dimension_name: protocol::general::PString("minecraft:overworld".into()),
+            hashed_seed: 1785937579151603980,
+            game_mode: 0,
             previous_game_mode: -1,
             is_debug: false,
             is_flat: false,
             death_location: None,
             portal_cooldown: protocol::general::VarInt(10),
+            enforce_secure_chat: false,
         },
     };
     connection.send_packet(&login).await.unwrap();

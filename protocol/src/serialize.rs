@@ -282,3 +282,45 @@ where
         Ok((i, (v1, v2, v3)))
     }
 }
+
+impl<T1, T2, T3, T4> SerializeItem for (T1, T2, T3, T4)
+where
+    T1: SerializeItem,
+    T2: SerializeItem,
+    T3: SerializeItem,
+    T4: SerializeItem,
+{
+    fn slen(&self) -> usize {
+        self.0.slen() + self.1.slen() + self.2.slen() + self.3.slen()
+    }
+
+    fn serialize<'b>(&self, mut buf: &'b mut [u8]) -> Result<&'b mut [u8], SerializeError> {
+        buf = self.0.serialize(buf)?;
+        buf = self.1.serialize(buf)?;
+        buf = self.2.serialize(buf)?;
+        buf = self.3.serialize(buf)?;
+        Ok(buf)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, v1) = T1::parse(i)?;
+        let (i, v2) = T2::parse(i)?;
+        let (i, v3) = T3::parse(i)?;
+        let (i, v4) = T4::parse(i)?;
+
+        Ok((i, (v1, v2, v3, v4)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn i32_identity() {
+        let mut tmp = [0, 0, 0, 0];
+
+        let _ = 123_i32.serialize(&mut tmp).unwrap();
+        assert_eq!((&[] as &[u8], 123), i32::parse(&tmp).unwrap());
+    }
+}

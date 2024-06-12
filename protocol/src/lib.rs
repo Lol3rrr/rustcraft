@@ -52,6 +52,8 @@ macro_rules! declare_packet {
                     let (i, $field) = <$field_ty as crate::serialize::SerializeItem>::parse(i)?;
                 )*
 
+                let (i, _) = nom::combinator::cond($ptrail, nom::bytes::streaming::tag(&[0x01]))(i)?;
+
                 Ok((i, Self {
                     $(
                         $field,

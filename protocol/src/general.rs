@@ -16,6 +16,9 @@ pub use bitset::BitSet;
 mod slot;
 pub use slot::Slot;
 
+mod text;
+pub use text::TextComponent;
+
 #[derive(Debug, PartialEq)]
 pub enum ParseError {
     WrongPacketId { expected: i32, received: i32 },

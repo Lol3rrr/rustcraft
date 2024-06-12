@@ -52,7 +52,7 @@ declare_packet!(
     (pitch, f32),
     (on_ground, bool)
 );
-declare_packet!(SetPlayerOnGround, 0x1d, false,); // TODO
+declare_packet!(SetPlayerOnGround, 0x1d, true,); // TODO
 
 declare_packet!(
     PlayerAction,

@@ -1,7 +1,4 @@
-use crate::{
-    general::{PString, Position, Slot, VarInt, VarLong},
-    serialize::SerializeItem,
-};
+use crate::general::{PString, Position, Slot, VarInt, VarLong};
 
 /// [Docs](https://wiki.vg/Pre-release_protocol#Entity_Metadata)
 #[derive(Debug, PartialEq)]
@@ -29,7 +26,7 @@ pub enum EntityMetadataValue {
     Boolean(bool),
     Rotations,
     Position(Position),
-    OptionalPosition,
+    OptionalPosition(Option<Position>),
     Direction,
     OptionalUUID(Option<u128>),
     BlockState(VarInt),
@@ -98,6 +95,9 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                     (i, EntityMetadataValue::String(v))
                 }
                 5 => {
+                    let (i, v) = nbt::Tag::parse(false, true)(n_i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+                    dbg!(v);
+
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                         "Parsing Text Component EntityMetadata",
                     )))
@@ -125,9 +125,8 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                     (i, EntityMetadataValue::Position(v))
                 }
                 11 => {
-                    return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
-                        "Parsing Optional Position EntityMetadata",
-                    )))
+                    let (i, v) = Option::<Position>::parse(n_i)?;
+                    (i, EntityMetadataValue::OptionalPosition(v))
                 }
                 12 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(

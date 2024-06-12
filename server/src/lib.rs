@@ -1,6 +1,11 @@
+#![feature(debug_closure_helpers)]
+
 use serde_derive::Deserialize;
 
 pub mod config;
+
+pub mod updates;
+pub mod world;
 
 #[derive(Debug, Deserialize)]
 pub struct ProfileResponse {
