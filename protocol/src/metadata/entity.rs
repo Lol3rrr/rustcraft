@@ -95,12 +95,13 @@ impl crate::serialize::SerializeItem for EntityMetadata {
                     (i, EntityMetadataValue::String(v))
                 }
                 5 => {
-                    let (i, v) = nbt::Tag::parse(false, true)(n_i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+                    let (i, v) = nbt::Tag::parse(false, true)(n_i)
+                        .map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
                     dbg!(v);
 
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
                         "Parsing Text Component EntityMetadata",
-                    )))
+                    )));
                 }
                 6 => {
                     return Err(nom::Err::Error(crate::general::ParseError::NotImplemented(

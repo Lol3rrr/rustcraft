@@ -270,12 +270,64 @@ where
 {
     tracing::info!("Entering Configuration State of the connection");
 
-    /*
-    connection.send_packet(&protocol::packet::Packet { inner: protocol::configuration::client::RegistryData {
-        id: protocol::general::PString("minecraft:dimension_type".into()),
-        entries: vec![],
-    } }).await.unwrap();
-    */
+    connection
+        .send_packet(&protocol::packet::Packet {
+            inner: protocol::configuration::client::FeatureFlags {
+                flags: vec![protocol::general::PString("minecraft:vanilla".into())],
+            },
+        })
+        .await
+        .unwrap();
+
+    let registries = [
+        (
+            protocol::general::PString("minecraft:dimension_type".into()),
+            vec![protocol::configuration::client::RegistryEntry {
+                id: protocol::general::PString("minecraft:overworld".into()),
+                data: None,
+            }],
+        ),
+        (
+            protocol::general::PString("minecraft:worldgen/biome".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:chat_type".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:trim_pattern".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:trim_material".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:wolf_variant".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:damage_type".into()),
+            vec![],
+        ),
+        (
+            protocol::general::PString("minecraft:banner_pattern".into()),
+            vec![],
+        ),
+    ];
+
+    for (name, entities) in registries {
+        connection
+            .send_packet(&protocol::packet::Packet {
+                inner: protocol::configuration::client::RegistryData {
+                    id: name,
+                    entries: entities,
+                },
+            })
+            .await
+            .unwrap();
+    }
 
     loop {
         let packet = match connection

@@ -9,7 +9,12 @@ impl WaterUpdates {
         Self { speed }
     }
 
-    pub fn update<const L: i16, const U: i16>(&self, previous: &Chunk<L, U>, chunk: &mut Chunk<L, U>, tick: u64) {
+    pub fn update<const L: i16, const U: i16>(
+        &self,
+        previous: &Chunk<L, U>,
+        chunk: &mut Chunk<L, U>,
+        tick: u64,
+    ) {
         for y in (L..U).rev() {
             for x in 0..16 {
                 for z in 0..16 {
@@ -305,10 +310,10 @@ mod tests {
         place_blocks!(
             expected,
             10,
-            (6, 10, 7, BlockData::Water {height: 7}),
-            (8, 10, 7, BlockData::Water {height: 7}),
-            (7, 10, 6, BlockData::Water {height: 7}),
-            (7, 10, 8, BlockData::Water {height: 7}),
+            (6, 10, 7, BlockData::Water { height: 7 }),
+            (8, 10, 7, BlockData::Water { height: 7 }),
+            (7, 10, 6, BlockData::Water { height: 7 }),
+            (7, 10, 8, BlockData::Water { height: 7 }),
         );
 
         assert_eq!(expected, chunk, "Other");
@@ -319,13 +324,13 @@ mod tests {
         place_blocks!(
             expected,
             20,
-            (6, 10, 7, BlockData::Water {height: 7}),
-            (8, 10, 7, BlockData::Water {height: 7}),
-            (7, 10, 6, BlockData::Water {height: 7}),
-            (7, 10, 8, BlockData::Water {height: 7}),
+            (6, 10, 7, BlockData::Water { height: 7 }),
+            (8, 10, 7, BlockData::Water { height: 7 }),
+            (7, 10, 6, BlockData::Water { height: 7 }),
+            (7, 10, 8, BlockData::Water { height: 7 }),
         );
 
-        // New Flow 
+        // New Flow
         place_blocks!(
             expected,
             20,
@@ -338,13 +343,13 @@ mod tests {
             (8, 10, 6, BlockData::Water { height: 6 }),
             (8, 10, 8, BlockData::Water { height: 6 }),
             // Sourrinding 7, 10, 8
-            (7, 10, 9, BlockData::Water {height: 6}),
-            (6, 10, 8, BlockData::Water {height: 6}),
-            (8, 10, 8, BlockData::Water {height: 6}),
+            (7, 10, 9, BlockData::Water { height: 6 }),
+            (6, 10, 8, BlockData::Water { height: 6 }),
+            (8, 10, 8, BlockData::Water { height: 6 }),
             // Sourrinding 7, 10, 6
-            (7, 10, 5, BlockData::Water {height: 6}),
-            (6, 10, 6, BlockData::Water {height: 6}),
-            (8, 10, 6, BlockData::Water {height: 6}),
+            (7, 10, 5, BlockData::Water { height: 6 }),
+            (6, 10, 6, BlockData::Water { height: 6 }),
+            (8, 10, 6, BlockData::Water { height: 6 }),
         );
 
         assert_eq!(expected, chunk);

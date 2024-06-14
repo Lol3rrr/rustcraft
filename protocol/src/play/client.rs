@@ -1,6 +1,6 @@
 use crate::{
     combined_packet, declare_packet,
-    general::{BitSet, PString, Position, VarInt, VarLong, TextComponent},
+    general::{BitSet, PString, Position, TextComponent, VarInt, VarLong},
     serialize::SerializeItem,
 };
 
@@ -95,7 +95,15 @@ declare_packet!(
 declare_packet!(ChunkBatchFinished, 0x0c, false, (size, VarInt));
 declare_packet!(ChunkBatchStart, 0x0d, false,);
 declare_packet!(Commands, 0x11, false,); // TODO
-declare_packet!(SetContainerContent, 0x13, false, (window_id, u8), (state_id, VarInt), (slot_data, Vec<crate::general::Slot>), (carried, crate::general::Slot));
+declare_packet!(
+    SetContainerContent,
+    0x13,
+    false,
+    (window_id, u8),
+    (state_id, VarInt),
+    (slot_data, Vec<crate::general::Slot>),
+    (carried, crate::general::Slot)
+);
 declare_packet!(
     SetContainerSlot,
     0x15,
@@ -125,7 +133,19 @@ declare_packet!(
 declare_packet!(UnloadChunk, 0x21, false, (chunk_z, i32), (chunk_x, i32));
 declare_packet!(GameEvent, 0x22, false, (event, u8), (value, f32));
 declare_packet!(HurtAnimation, 0x24, false, (entity_id, VarInt), (yaw, f32));
-declare_packet!(InitializeWorldBorder, 0x25, false, (x, f64), (z, f64), (old_diameter, f64), (new_diameter, f64), (speed, VarLong), (portal_teleport_boundary, VarInt), (warning_blocks, VarInt), (warning_time, VarInt));
+declare_packet!(
+    InitializeWorldBorder,
+    0x25,
+    false,
+    (x, f64),
+    (z, f64),
+    (old_diameter, f64),
+    (new_diameter, f64),
+    (speed, VarLong),
+    (portal_teleport_boundary, VarInt),
+    (warning_blocks, VarInt),
+    (warning_time, VarInt)
+);
 declare_packet!(KeepAlive, 0x26, false,); // TODO
 declare_packet!(WorldEvent, 0x28, false,); // TODO
 declare_packet!(Particle, 0x29, false,); // TODO
@@ -190,7 +210,7 @@ impl PlayerInfoUpdate {
         let (i, player_count) = VarInt::parse(i)?;
 
         let mut players = Vec::with_capacity(player_count.0 as usize);
-        
+
         let mut i = i;
         for _ in 0..player_count.0 {
             let (n_i, uuid) = u128::parse(i)?;
@@ -201,7 +221,7 @@ impl PlayerInfoUpdate {
             let mut n_i = n_i;
             for idx in 0..8 {
                 let mask: i8 = 0x01 << idx;
-                if actions  & mask == 0 {
+                if actions & mask == 0 {
                     continue;
                 }
 
@@ -215,10 +235,7 @@ impl PlayerInfoUpdate {
             i = n_i;
         }
 
-        Ok((i, Self {
-            actions,
-            players,
-        }))
+        Ok((i, Self { actions, players }))
     }
 }
 
@@ -230,14 +247,17 @@ impl crate::packet::PacketContent for PlayerInfoUpdate {
         todo!()
     }
 
-    fn serialize<'b>(&self, buffer: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+    fn serialize<'b>(
+        &self,
+        buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         todo!()
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum PlayerAction {
-    AddPlayer{},
+    AddPlayer {},
     InitializeChat {},
     UpdateGamemode {},
     UpdateListed {},
@@ -287,18 +307,32 @@ impl PlayerAction {
     }
 }
 
-declare_packet!(SynchronizePlayerPosition, 0x40, false, (x, f64), (y, f64), (z, f64), (yaw, f32), (pitch, f32), (flags, i8), (teleport_id, VarInt));
 declare_packet!(
-    UpdateRecipeBook, 
-    0x41, 
-    false, 
-    (action, VarInt), 
-    (crafting_open, bool), (crafting_filter, bool),
-    (smelting_open, bool), (smelting_filter, bool),
-    (blast_furnace_open, bool), (blast_furnace_filter, bool),
-    (smoker_open, bool), (smoker_filter, bool),
-    (recipe_ids, Vec<PString<'static>>)
-    // TODO
+    SynchronizePlayerPosition,
+    0x40,
+    false,
+    (x, f64),
+    (y, f64),
+    (z, f64),
+    (yaw, f32),
+    (pitch, f32),
+    (flags, i8),
+    (teleport_id, VarInt)
+);
+declare_packet!(
+    UpdateRecipeBook,
+    0x41,
+    false,
+    (action, VarInt),
+    (crafting_open, bool),
+    (crafting_filter, bool),
+    (smelting_open, bool),
+    (smelting_filter, bool),
+    (blast_furnace_open, bool),
+    (blast_furnace_filter, bool),
+    (smoker_open, bool),
+    (smoker_filter, bool),
+    (recipe_ids, Vec<PString<'static>>) // TODO
 );
 declare_packet!(RemoveEntities, 0x42, false, (entity_ids, Vec<VarInt>));
 declare_packet!(
@@ -315,11 +349,30 @@ declare_packet!(
     (chunk_section_position, i64),
     (blocks, Vec<VarLong>)
 );
-declare_packet!(ServerData, 0x4b, false, (motd, TextComponent), (icon, Option<Vec<i8>>), (enforce_secure_chat, bool));
+declare_packet!(
+    ServerData,
+    0x4b,
+    false,
+    (motd, TextComponent),
+    (icon, Option<Vec<i8>>),
+    (enforce_secure_chat, bool)
+);
 declare_packet!(SetHeldItem, 0x53, false, (slot, i8));
-declare_packet!(SetCenterChunk, 0x54, false, (chunk_x, VarInt), (chunk_z, VarInt));
+declare_packet!(
+    SetCenterChunk,
+    0x54,
+    false,
+    (chunk_x, VarInt),
+    (chunk_z, VarInt)
+);
 declare_packet!(SetRenderDistance, 0x55, false, (view_distance, VarInt));
-declare_packet!(SetDefaultSpawnPosition, 0x56, false, (location, Position), (angle, f32));
+declare_packet!(
+    SetDefaultSpawnPosition,
+    0x56,
+    false,
+    (location, Position),
+    (angle, f32)
+);
 declare_packet!(
     SetEntityMetadata,
     0x58,
@@ -343,8 +396,22 @@ declare_packet!(
     (entity_id, VarInt),
     (equipment, Equipment)
 );
-declare_packet!(SetExperience, 0x5c, false, (experience_bar, f32), (level, VarInt), (total_experience, VarInt));
-declare_packet!(SetHealth, 0x5d, false, (health, f32), (food, VarInt), (food_saturation, f32));
+declare_packet!(
+    SetExperience,
+    0x5c,
+    false,
+    (experience_bar, f32),
+    (level, VarInt),
+    (total_experience, VarInt)
+);
+declare_packet!(
+    SetHealth,
+    0x5d,
+    false,
+    (health, f32),
+    (food, VarInt),
+    (food_saturation, f32)
+);
 
 #[derive(Debug, PartialEq)]
 pub struct Equipment {
@@ -387,8 +454,8 @@ impl crate::serialize::SerializeItem for Equipment {
 declare_packet!(
     Login,
     0x2b,
-    false, 
-    (entity_id, i32), 
+    false,
+    (entity_id, i32),
     (is_hardcore, bool),
     (dimensions, Vec<PString<'static>>),
     (max_players, VarInt),
@@ -700,7 +767,13 @@ impl SerializeItem for AttributeModifier {
 }
 
 declare_packet!(PickupItem, 0x6f, false,); // TODO
-declare_packet!(SetTickingState, 0x71, false, (tick_rate, f32), (is_frozen, bool));
+declare_packet!(
+    SetTickingState,
+    0x71,
+    false,
+    (tick_rate, f32),
+    (is_frozen, bool)
+);
 declare_packet!(StepTick, 0x72, false, (steps, VarInt));
 declare_packet!(UpdateAdvancements, 0x74, false, (reset_clear, bool)); // TODO
 declare_packet!(

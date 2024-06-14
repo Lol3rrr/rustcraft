@@ -8,17 +8,17 @@ impl crate::serialize::SerializeItem for TextComponent {
         todo!()
     }
 
-    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         todo!()
     }
 
     fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
-        let (i, (_, tag)) = nbt::Tag::parse(false, true)(i).map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
+        let (i, (_, tag)) = nbt::Tag::parse(false, true)(i)
+            .map_err(|e| nom::Err::Error(crate::general::ParseError::Other))?;
 
-        Ok((i, Self {
-            content: tag,
-        }))
+        Ok((i, Self { content: tag }))
     }
 }
-
-

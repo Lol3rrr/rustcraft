@@ -1,28 +1,23 @@
 use crate::{
+    combined_packet, declare_packet,
     general::{PString, VarInt},
     serialize::SerializeItem,
-    declare_packet,
 };
 
-#[derive(Debug)]
-pub enum Configuration {
-    RegistryData(RegistryData),
-    Finish(Finish),
-    UpdateTags(UpdateTags),
-}
+combined_packet!(
+    Configuration,
+    PluginMessage,
+    RegistryData,
+    FeatureFlags,
+    Finish,
+    UpdateTags,
+    KnownPackets
+);
 
-impl Configuration {
-    pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
-        match id.0 {
-            0x03 => Finish::parse(id, i).map(|(i, v)| (i, Self::Finish(v))),
-            0x07 => RegistryData::parse(id, i).map(|(i, v)| (i, Self::RegistryData(v))),
-            0x0d => UpdateTags::parse(id, i).map(|(i, v)| (i, Self::UpdateTags(v))),
-            _ => Err(nom::Err::Error(crate::general::ParseError::Other)),
-        }
-    }
-}
-
+declare_packet!(PluginMessage, 0x01, false, (channel, PString<'static>)); // TODO
 declare_packet!(Finish, 0x03, false,);
+declare_packet!(FeatureFlags, 0x0c, false, (flags, Vec<PString<'static>>));
+declare_packet!(KnownPackets, 0x0e, false,); // TODO
 
 #[derive(Debug, PartialEq)]
 pub struct RegistryEntry {
@@ -30,15 +25,30 @@ pub struct RegistryEntry {
     pub data: Option<nbt::Tag>,
 }
 
-declare_packet!(RegistryData, 0x07, false, (id, PString<'static>), (entries, Vec<RegistryEntry>));
+declare_packet!(
+    RegistryData,
+    0x07,
+    false,
+    (id, PString<'static>),
+    (entries, Vec<RegistryEntry>)
+);
 
 impl crate::serialize::SerializeItem for RegistryEntry {
     fn slen(&self) -> usize {
-        todo!()
+        self.id.slen() + self.data.as_ref().map(|t| todo!()).unwrap_or(1)
     }
 
-    fn serialize<'b>(&self, buf: &'b mut [u8]) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-        todo!()
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        let buf = self.id.serialize(buf)?;
+        match self.data.as_ref() {
+            None => 0x00.serialize(buf),
+            Some(data) => {
+                todo!()
+            }
+        }
     }
 
     fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
@@ -92,5 +102,31 @@ impl crate::packet::PacketContent for UpdateTags {
         buffer: &'b mut [u8],
     ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
         self.tags.serialize(buffer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::packet::{Packet, PacketContent};
+
+    #[test]
+    fn registry_data() {
+        let expected = RegistryData {
+            id: PString("testing".into()),
+            entries: vec![RegistryEntry {
+                id: PString("first".into()),
+                data: None,
+            }],
+        };
+
+        let buffer = Packet { inner: expected }.serialize();
+
+        dbg!(&buffer);
+
+        let (rem, parsed) = Packet::parse(RegistryData::parse)(&buffer).unwrap();
+        dbg!(parsed);
+
+        todo!()
     }
 }

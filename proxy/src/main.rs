@@ -97,6 +97,7 @@ async fn handle_connection(connection: tokio::net::TcpStream, target: tokio::net
     };
 }
 
+#[tracing::instrument(skip(connection, target))]
 async fn status<S, S2>(mut connection: Connection<S>, mut target: Connection<S2>)
 where
     S: Transport,
@@ -156,6 +157,7 @@ where
     }
 }
 
+#[tracing::instrument(skip(connection, target))]
 async fn login<S, S2>(
     mut connection: Connection<networking::UnencryptedConnection<S>>,
     mut target: Connection<S2>,
@@ -192,6 +194,7 @@ async fn login<S, S2>(
     configuration(connection, target).await;
 }
 
+#[tracing::instrument(skip(connection, target))]
 async fn configuration<S, S2>(mut connection: Connection<S>, mut target: Connection<S2>)
 where
     S: Transport,
@@ -212,10 +215,10 @@ where
 
                 match protocol::configuration::server::ConfigurationMessage::parse(packet.id, &packet.data) {
                     Ok(known) => {
-                        tracing::info!("Client: {:#?}", known);
+                        tracing::info!("Client -> Server - {:#?}", known);
                     }
                     Err(_) => {
-                        tracing::error!("Client-Packet: {:?}", packet.id);
+                        tracing::error!("Client -> Server - Unknown Packet: {:?}", packet.id);
                     }
                 };
 
@@ -236,10 +239,10 @@ where
 
                 match protocol::configuration::client::Configuration::parse(packet.id, &packet.data) {
                     Ok(known) => {
-                        tracing::info!("Server: {:#?}", known);
+                        tracing::info!("Server -> Client - {:#?}", known);
                     }
-                    Err(_) => {
-                        tracing::error!("Server-Packet: {:?}", packet.id);
+                    Err(e) => {
+                        tracing::error!("Server -> Client - Unknown Packet: {:?} - {:?}", packet.id, e);
                     }
                 };
 

@@ -203,7 +203,13 @@ impl Tag {
         Ok((i, result))
     }
 
-    pub fn serialize(&self, file: bool, network: bool, name: Option<&str>, buf: &mut Vec<u8>) -> Result<(), ()> {
+    pub fn serialize(
+        &self,
+        file: bool,
+        network: bool,
+        name: Option<&str>,
+        buf: &mut Vec<u8>,
+    ) -> Result<(), ()> {
         match self {
             Self::End => {
                 buf.push(0x00);
@@ -371,13 +377,15 @@ mod serialize_parse_tests {
             let src_value = $value;
 
             let mut buffer = Vec::new();
-            src_value.serialize(false, true, Some($name), &mut buffer).unwrap();
+            src_value
+                .serialize(false, true, Some($name), &mut buffer)
+                .unwrap();
 
             let (rem, (parsed_name, parsed_value)) = Tag::parse(false, true)(&buffer).unwrap();
             assert_eq!(&[] as &[u8], rem);
             assert_eq!($name, parsed_name);
             assert_eq!(src_value, parsed_value);
-        }}
+        }};
     }
 
     #[test]
@@ -422,7 +430,10 @@ mod serialize_parse_tests {
 
     #[test]
     fn list() {
-        parsed!(Tag::List(vec![Tag::Float(123.0), Tag::Float(321.0)]), "test");
+        parsed!(
+            Tag::List(vec![Tag::Float(123.0), Tag::Float(321.0)]),
+            "test"
+        );
     }
 
     #[test]
@@ -437,6 +448,13 @@ mod serialize_parse_tests {
 
     #[test]
     fn compound_float() {
-        parsed!(Tag::Compound(vec![("first".to_string(), Tag::Float(123.0))].into_iter().collect()), "test");
+        parsed!(
+            Tag::Compound(
+                vec![("first".to_string(), Tag::Float(123.0))]
+                    .into_iter()
+                    .collect()
+            ),
+            "test"
+        );
     }
 }
