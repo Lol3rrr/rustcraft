@@ -1,28 +1,26 @@
 use crate::{
+    combined_packet, declare_packet,
     general::{PString, VarInt},
     serialize::SerializeItem,
 };
 
-#[derive(Debug, PartialEq)]
-pub enum ConfigurationMessage {
-    ClientInformation(ClientInformation),
-    PluginMessage(PluginMessage),
-    AckFinish(AckFinish),
-}
+combined_packet!(
+    ConfigurationMessage,
+    ClientInformation,
+    PluginMessage,
+    AckFinish,
+    KnownPacks
+);
 
-impl ConfigurationMessage {
-    pub fn parse(id: VarInt, i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
-        match id.0 {
-            0x00 => ClientInformation::parse(id, i).map(|(i, v)| (i, Self::ClientInformation(v))),
-            0x02 => PluginMessage::parse(id, i).map(|(i, v)| (i, Self::PluginMessage(v))),
-            0x03 => AckFinish::parse(id, i).map(|(i, v)| (i, Self::AckFinish(v))),
-            other => {
-                dbg!(other);
-                Err(nom::Err::Error(crate::general::ParseError::Other))
-            }
-        }
-    }
-}
+declare_packet!(
+    KnownPacks,
+    0x07,
+    false,
+    (
+        packs,
+        Vec<(PString<'static>, PString<'static>, PString<'static>)>
+    )
+);
 
 #[derive(Debug, PartialEq)]
 pub struct ClientInformation {
@@ -118,6 +116,22 @@ impl PluginMessage {
         let i = &i[length.0 as usize..];
 
         Ok((i, Self { channel, data }))
+    }
+}
+
+impl crate::packet::PacketContent for PluginMessage {
+    const ID: i32 = 0x02;
+    const PACKETTRAIL: bool = false;
+
+    fn length(&self) -> usize {
+        self.channel.slen() + self.data.len()
+    }
+
+    fn serialize<'b>(
+        &self,
+        buffer: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
     }
 }
 

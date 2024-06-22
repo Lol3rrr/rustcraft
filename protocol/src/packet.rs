@@ -96,30 +96,33 @@ impl<D> Packet<D> {
     {
         let pid = VarInt(D::ID);
         let inner_length = self.inner.length();
-        let length_varint =
-            VarInt(inner_length as i32 + 5 + D::PACKETTRAIL.then_some(1).unwrap_or(0));
-
-        let mut result = vec![
-            0;
-            pid.slen() + length_varint.slen() - 2
-                + inner_length
-                + D::PACKETTRAIL.then_some(1).unwrap_or(0)
-        ];
+        let buffer_size = 3 + pid.slen() + inner_length + D::PACKETTRAIL.then_some(1).unwrap_or(0);
+        let mut result = vec![0; buffer_size];
 
         let mut buffer = &mut result[..];
 
-        let mut tmp_buffer = [0, 0, 0, 0, 0];
-        let written = length_varint.serialize(&mut tmp_buffer);
-        (buffer[..3]).copy_from_slice(&tmp_buffer[..3]);
-        buffer[2] &= 0x7f;
         buffer = &mut buffer[3..];
 
+        // We now serialize the packet id
         buffer = pid.serialize(buffer).unwrap();
 
-        let serialized = self.inner.serialize(buffer);
+        // Write the content
+        buffer = self.inner.serialize(buffer).unwrap();
         if D::PACKETTRAIL {
-            *buffer.last_mut().unwrap() = 0x01;
+            *buffer.get_mut(0).unwrap() = 0x01;
+            buffer = &mut buffer[1..];
         }
+
+        let written_length = buffer_size - buffer.len();
+
+        let mut tmp_buffer = [0, 0, 0, 0, 0];
+        let written = VarInt(written_length as i32 - 3).serialize(&mut tmp_buffer);
+        (result[..3]).copy_from_slice(&tmp_buffer[..3]);
+        result[0] |= 0x80;
+        result[1] |= 0x80;
+        result[2] &= 0x7f;
+
+        result.truncate(written_length);
 
         result
     }
@@ -184,20 +187,27 @@ impl RawPacket {
     pub fn serialize(&self) -> Vec<u8> {
         let pid = self.id;
         let inner_length = self.data.len();
-        let length_varint = VarInt(inner_length as i32 + 5);
 
-        let mut result = vec![0; pid.slen() + length_varint.slen() - 2 + inner_length];
+        let pre_trunk_length = 3 + pid.slen() + inner_length;
+        let mut result = vec![0; pre_trunk_length];
 
         let mut buffer = &mut result[..];
 
-        let mut tmp_buffer = [0, 0, 0, 0, 0];
-        let written = length_varint.serialize(&mut tmp_buffer);
-        (buffer[..3]).copy_from_slice(&tmp_buffer[..3]);
-        buffer[2] &= 0x7f;
         buffer = &mut buffer[3..];
 
         buffer = pid.serialize(buffer).unwrap();
         (buffer[..self.data.len()]).copy_from_slice(&self.data);
+
+        let remaining_len = buffer.len() - self.data.len();
+
+        result.truncate(result.len() - remaining_len);
+
+        let mut tmp_buffer = [0, 0, 0, 0, 0];
+        let written = VarInt(result.len() as i32 - 3).serialize(&mut tmp_buffer);
+        (result[..3]).copy_from_slice(&tmp_buffer[..3]);
+        result[0] |= 0x80;
+        result[1] |= 0x80;
+        result[2] &= 0x7f;
 
         result
     }

@@ -238,8 +238,25 @@ where
                 };
 
                 match protocol::configuration::client::Configuration::parse(packet.id, &packet.data) {
-                    Ok(known) => {
+                    Ok((_, known)) => {
                         tracing::info!("Server -> Client - {:#?}", known);
+
+                        let raw_serialized = packet.serialize();
+                        let known_serialized = match known {
+                            protocol::configuration::client::Configuration::RegistryData(d) => {
+                                protocol::packet::Packet { inner: d }.serialize()
+                            }
+                            protocol::configuration::client::Configuration::Finish(d) => {
+                                protocol::packet::Packet { inner: d }.serialize()
+                            }
+                            other => Vec::new(),
+                        };
+
+                        if raw_serialized != known_serialized && !known_serialized.is_empty() {
+                            tracing::error!("Wrong serialization");
+                            tracing::error!("Raw: {:?}", raw_serialized);
+                            tracing::error!("Own: {:?}", known_serialized);
+                        }
                     }
                     Err(e) => {
                         tracing::error!("Server -> Client - Unknown Packet: {:?} - {:?}", packet.id, e);
@@ -322,10 +339,10 @@ where
                         };
                     }
                     Ok((rem, _packet)) => {
-                        tracing::error!("[SERVER] 0x{:02x} - Unparsed Data: {:?}", packet.id.0, rem.len());
+                        tracing::error!("[SERVER -> Client] 0x{:02x} - Unparsed Data: {:?}", packet.id.0, rem.len());
                     }
                     Err(e) => {
-                        tracing::error!("[SERVER] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
+                        tracing::error!("[SERVER -> Client] 0x{:02x} - Size: {:?} - Error: {:?}", packet.id.0, packet.data.len(), e);
                     }
                 };
 

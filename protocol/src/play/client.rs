@@ -94,7 +94,13 @@ declare_packet!(
 );
 declare_packet!(ChunkBatchFinished, 0x0c, false, (size, VarInt));
 declare_packet!(ChunkBatchStart, 0x0d, false,);
-declare_packet!(Commands, 0x11, false,); // TODO
+declare_packet!(
+    Commands,
+    0x11,
+    false,
+    (nodes, Vec<CommandNode>),
+    (root_index, VarInt)
+);
 declare_packet!(
     SetContainerContent,
     0x13,
@@ -662,6 +668,7 @@ declare_packet!(
     (sky_light_mask, BitSet),
     (block_light_mask, BitSet),
     (empty_sky_light_mask, BitSet),
+    (empty_block_light_mask, BitSet),
     (sky_light_arrays, Vec<Vec<i8>>),
     (block_light_arrays, Vec<Vec<i8>>)
 );
@@ -784,6 +791,130 @@ declare_packet!(
     (properties, Vec<(VarInt, f64, Vec<AttributeModifier>)>)
 );
 declare_packet!(UpdateRecipes, 0x77, false,); // TODO
+
+#[derive(Debug, PartialEq)]
+pub struct CommandNode {
+    pub flags: i8,
+    pub children: Vec<VarInt>,
+    pub redirect: Option<VarInt>,
+    pub name: Option<PString<'static>>,
+    pub parser: Option<CommandParser>,
+    pub suggestions_type: Option<PString<'static>>,
+}
+
+impl SerializeItem for CommandNode {
+    fn slen(&self) -> usize {
+        self.flags.slen()
+            + self.children.slen()
+            + self.redirect.as_ref().map(|r| r.slen()).unwrap_or(0)
+            + self.name.as_ref().map(|r| r.slen()).unwrap_or(0)
+            + self.parser.as_ref().map(|r| r.slen()).unwrap_or(0)
+            + self
+                .suggestions_type
+                .as_ref()
+                .map(|r| r.slen())
+                .unwrap_or(0)
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, flags) = i8::parse(i)?;
+
+        let (mut i, children) = Vec::<VarInt>::parse(i)?;
+
+        let redirect = if flags & 0x08 > 0 {
+            let (tmp_i, index) = VarInt::parse(i)?;
+            i = tmp_i;
+            Some(index)
+        } else {
+            None
+        };
+
+        let name = if flags & 0x03 == 1 || flags & 0x03 == 2 {
+            let (tmp_i, name) = PString::parse(i)?;
+            i = tmp_i;
+            Some(name)
+        } else {
+            None
+        };
+
+        let parser = if flags & 0x03 == 2 {
+            let (tmp_i, parser) = CommandParser::parse(i)?;
+            i = tmp_i;
+            Some(parser)
+        } else {
+            None
+        };
+
+        let suggestions_type = if flags & 0x10 > 0 {
+            let (tmp_i, ident) = PString::parse(i)?;
+            i = tmp_i;
+            Some(ident)
+        } else {
+            None
+        };
+
+        Ok((
+            i,
+            Self {
+                flags,
+                children,
+                redirect,
+                name,
+                parser,
+                suggestions_type,
+            },
+        ))
+    }
+
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum CommandParser {
+    BrigadierString(VarInt),
+    Entity(i8),
+    Message,
+}
+
+impl SerializeItem for CommandParser {
+    fn slen(&self) -> usize {
+        todo!()
+    }
+
+    fn parse(i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
+        let (i, id) = VarInt::parse(i)?;
+
+        match id.0 {
+            5 => {
+                let (i, id) = VarInt::parse(i)?;
+                Ok((i, Self::BrigadierString(id)))
+            }
+            6 => {
+                let (i, flags) = i8::parse(i)?;
+                Ok((i, Self::Entity(flags)))
+            }
+            19 => Ok((i, Self::Message)),
+            other => {
+                dbg!(other);
+                Err(nom::Err::Error(crate::general::ParseError::NotImplemented(
+                    "Unknown Command Parser ID",
+                )))
+            }
+        }
+    }
+
+    fn serialize<'b>(
+        &self,
+        buf: &'b mut [u8],
+    ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
+        todo!()
+    }
+}
 
 #[cfg(test)]
 mod tests {

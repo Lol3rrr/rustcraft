@@ -7,6 +7,8 @@ pub mod config;
 pub mod updates;
 pub mod world;
 
+pub mod data;
+
 #[derive(Debug, Deserialize)]
 pub struct ProfileResponse {
     pub id: String,

@@ -99,3 +99,24 @@ impl crate::packet::PacketContent for LoginAck {
         Ok(buffer)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::packet::Packet;
+
+    #[test]
+    fn serialize_loginstart() {
+        let packet = Packet {
+            inner: LoginStart {
+                name: PString("testing".into()),
+                uuid: 123456789,
+            },
+        };
+
+        let serialized = packet.serialize();
+        dbg!(&serialized);
+
+        todo!();
+    }
+}

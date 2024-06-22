@@ -279,45 +279,21 @@ where
         .await
         .unwrap();
 
-    let registries = [
-        (
-            protocol::general::PString("minecraft:dimension_type".into()),
-            vec![protocol::configuration::client::RegistryEntry {
-                id: protocol::general::PString("minecraft:overworld".into()),
-                data: None,
-            }],
-        ),
-        (
-            protocol::general::PString("minecraft:worldgen/biome".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:chat_type".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:trim_pattern".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:trim_material".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:wolf_variant".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:damage_type".into()),
-            vec![],
-        ),
-        (
-            protocol::general::PString("minecraft:banner_pattern".into()),
-            vec![],
-        ),
-    ];
+    connection
+        .send_packet(&protocol::packet::Packet {
+            inner: protocol::configuration::client::KnownPacks {
+                packs: vec![(
+                    protocol::general::PString("minecraft".into()),
+                    protocol::general::PString("core".into()),
+                    protocol::general::PString("1.20.6".into()),
+                )],
+            },
+        })
+        .await
+        .unwrap();
 
-    for (name, entities) in registries {
+    for (name, entities) in server::data::registry::all_registries() {
+        tracing::info!("Sending Registry: {:?}", name);
         connection
             .send_packet(&protocol::packet::Packet {
                 inner: protocol::configuration::client::RegistryData {
@@ -352,6 +328,9 @@ where
             }
             protocol::configuration::server::ConfigurationMessage::PluginMessage(pm) => {
                 tracing::info!("Plugin Message: {:?}", pm);
+            }
+            protocol::configuration::server::ConfigurationMessage::KnownPacks(packs) => {
+                tracing::info!("Known Packs: {:?}", packs);
             }
             protocol::configuration::server::ConfigurationMessage::AckFinish(_) => {
                 tracing::info!("Received AckFinish");
@@ -392,4 +371,20 @@ where
     connection.send_packet(&login).await.unwrap();
 
     tracing::info!("Send Login Packet");
+
+    let game_event = protocol::packet::Packet {
+        inner: protocol::play::client::GameEvent {
+            event: 13,
+            value: 0.0,
+        },
+    };
+    connection.send_packet(&game_event).await.unwrap();
+
+    tracing::info!("Send Game-Event Packet");
+
+    // Send Chunk Data
+
+    loop {
+        tokio::task::yield_now().await;
+    }
 }

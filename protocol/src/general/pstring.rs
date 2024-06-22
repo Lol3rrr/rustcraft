@@ -27,6 +27,12 @@ impl<'s> crate::serialize::SerializeItem for PString<'s> {
         }
 
         let len = length.0 as usize;
+        if i.len() < len {
+            dbg!(i);
+            dbg!(len);
+            return Err(nom::Err::Error(super::ParseError::Other));
+        }
+
         let content = &i[..len];
 
         let str_content = core::str::from_utf8(content)
@@ -53,5 +59,15 @@ mod tests {
         let (rem, res) = PString::parse(&[0x04, b'a', b'c', b'd', b'b', 0x01]).unwrap();
         assert_eq!(&[0x01], rem);
         assert_eq!(PString("acdb".into()), res);
+    }
+
+    #[test]
+    fn serialize_empty() {
+        let mut buffer = vec![0; 10];
+
+        let rem = PString("test".into()).serialize(&mut buffer).unwrap();
+        assert_eq!(5, rem.len(), "{:?}", rem);
+
+        let (unparsed, parsed) = PString::parse(&buffer).unwrap();
     }
 }

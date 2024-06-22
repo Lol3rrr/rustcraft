@@ -10,14 +10,23 @@ impl crate::serialize::SerializeItem for VarInt {
         &self,
         buf: &'b mut [u8],
     ) -> Result<&'b mut [u8], crate::serialize::SerializeError> {
-        (&mut buf[..5]).copy_from_slice(&[0x80, 0x80, 0x80, 0x80, 0x00]);
-
+        let mut size = 0;
         let value = self.0 as u32;
         for (idx, cell) in buf.iter_mut().enumerate().take(5) {
             *cell |= ((value >> (idx * 7)) & 0x7f) as u8;
+            size += 1;
+
+            let (remaining, _) = value.overflowing_shr((idx as u32 + 1) * 7);
+            if remaining == 0 {
+                break;
+            }
+
+            if idx < 4 {
+                *cell |= 0x80;
+            }
         }
 
-        Ok(&mut buf[5..])
+        Ok(&mut buf[size..])
     }
 
     fn parse(mut i: &[u8]) -> nom::IResult<&[u8], Self, crate::general::ParseError> {
@@ -91,8 +100,9 @@ mod tests {
     #[test]
     fn serialize_0() {
         let mut buffer = [0, 0, 0, 0, 0];
-        VarInt(0).serialize(&mut buffer);
-        assert_eq!([0x80, 0x80, 0x80, 0x80, 0x00], buffer);
+        let rem = VarInt(0).serialize(&mut buffer).unwrap();
+        assert_eq!(&[0x00, 0x00, 0x00, 0x00], rem);
+        assert_eq!([0x00, 0x00, 0x00, 0x00, 0x00], buffer);
 
         let (_, res) = VarInt::parse(&buffer).unwrap();
         assert_eq!(0, res.0);
@@ -101,8 +111,9 @@ mod tests {
     #[test]
     fn serialize_9() {
         let mut buffer = [0, 0, 0, 0, 0];
-        VarInt(9).serialize(&mut buffer);
-        assert_eq!([0x89, 0x80, 0x80, 0x80, 0x00], buffer);
+        let rem = VarInt(9).serialize(&mut buffer).unwrap();
+        assert_eq!(&[0x00, 0x00, 0x00, 0x00], rem);
+        assert_eq!([0x09, 0x00, 0x00, 0x00, 0x00], buffer);
 
         let (_, res) = VarInt::parse(&buffer).unwrap();
         assert_eq!(9, res.0);
@@ -111,8 +122,9 @@ mod tests {
     #[test]
     fn serialize_128() {
         let mut buffer = [0, 0, 0, 0, 0];
-        VarInt(128).serialize(&mut buffer);
-        assert_eq!([0x80, 0x81, 0x80, 0x80, 0x00], buffer);
+        let rem = VarInt(128).serialize(&mut buffer).unwrap();
+        assert_eq!(&[0x00, 0x00, 0x00], rem);
+        assert_eq!([0x80, 0x01, 0x00, 0x00, 0x00], buffer);
 
         let (_, res) = VarInt::parse(&buffer).unwrap();
         assert_eq!(128, res.0);
